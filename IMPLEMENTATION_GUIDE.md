@@ -47,41 +47,80 @@
 
 ### Code to Pre-Write (on laptop)
 
-```
-weatherise/
+```txt
+WeatherRise-2026/
+│
 ├── backend/
-│   ├── app/
-│   │   ├── main.py              # FastAPI app
-│   │   ├── agents/
-│   │   │   ├── orchestrator.py   # LangGraph StateGraph
-│   │   │   ├── weather.py        # Weather Agent
-│   │   │   ├── attraction.py     # Attraction Agent
-│   │   │   ├── route.py          # Route Agent
-│   │   │   ├── local_expert.py   # Local Expert Agent
-│   │   │   ├── safety.py         # Safety Agent
-│   │   │   ├── watcher.py        # Weather Watcher (background)
-│   │   │   └── notifier.py       # Notification Agent (SMS + WS)
-│   │   ├── services/
-│   │   │   ├── llm.py            # NIM client (OpenAI-compatible)
-│   │   │   ├── weather_api.py    # Open-Meteo + OWM wrapper
-│   │   │   ├── sms.py            # SpeedSMS wrapper
-│   │   │   ├── rag.py            # Milvus retrieval
-│   │   │   └── export.py         # Plan → image + QR
-│   │   ├── models/               # Pydantic schemas
-│   │   └── config.py             # Environment config
-│   ├── requirements.txt
-│   └── Dockerfile
+│   └── app/
+│       ├── main.py                     # FastAPI entry point
+│       ├── Dockerfile
+│       ├── requirements.txt
+│       ├── agents/
+│       │   ├── orchestrator.py         # LangGraph StateGraph
+│       │   ├── weather.py              # Weather Agent (Earth-2 + fallback)
+│       │   ├── attraction.py           # Attraction Agent (RAG)
+│       │   ├── route.py                # Route Agent (cuOpt + OSM)
+│       │   ├── local_expert.py         # Local Expert Agent (RAG)
+│       │   ├── safety.py               # Safety Agent (NeMo Guardrails)
+│       │   ├── watcher.py              # Weather Watcher (APScheduler background)
+│       │   └── notifier.py             # Notification Agent (SMS + WebSocket)
+│       ├── services/
+│       │   ├── earth2_client.py        # Earth-2 model interface (FourCastNet/CorrDiff/StormScope)
+│       │   ├── openmeteo_client.py     # Open-Meteo fallback weather API
+│       │   ├── gfs_client.py           # GFS weather data client
+│       │   ├── risk_rules.py           # Weather → travel/enterprise risk translator
+│       │   ├── llm.py                  # NIM LLM client (OpenAI-compatible)
+│       │   ├── rag.py                  # Milvus RAG retrieval
+│       │   ├── cuopt.py                # NVIDIA cuOpt route optimizer
+│       │   ├── sms.py                  # SpeedSMS wrapper
+│       │   └── export.py               # Plan → PNG image + QR code
+│       ├── configs/
+│       │   └── config.py               # App configuration & env loading
+│       ├── schemas/
+│       │   └── weather_schema.py       # Pydantic weather schema (Weatherise standard)
+│       └── models/
+│           ├── request_schema.py       # User request Pydantic models
+│           ├── forecast_schema.py      # Earth-2 forecast output schema
+│           └── risk_schema.py          # Risk level Pydantic models
+│
+├── data/
+│   ├── data_example.py                 # Example data loading script
+│   ├── attractions/                    # Scraped attraction data (TripAdvisor, Google Places)
+│   ├── milvus/                         # Milvus vector DB storage
+│   ├── parsed/                         # Processed/chunked documents for RAG
+│   ├── postgres/                       # PostgreSQL data directory
+│   ├── raw/                            # Raw scraped data (HTML, JSON)
+│   ├── redis/                          # Redis persistence data
+│   ├── risk_outputs/                   # Cached risk translation results
+│   └── weather/                        # Earth-2 / API weather data cache
+│
+├── frontend/
+│   └── app/                            # Next.js PWA (Day 4-5)
+│       └── app/                        # Next.js app router
+│
 ├── gradio-ui/
-│   ├── app.py                    # Gradio ChatInterface
+│   ├── app.py                          # Gradio ChatInterface MVP
 │   └── requirements.txt
-├── frontend/                     # Next.js PWA (Day 4-5)
+│
 ├── scripts/
-│   ├── ingest_data.py            # Data ingestion pipeline
-│   ├── setup_milvus.py           # Milvus collection setup
-│   └── healthcheck.sh            # Health check all services
-├── data/                         # Raw data files
-└── .env                          # API keys
+│   ├── healthcheck.sh                  # Service health check (all ports)
+│   ├── start_gpu_services.sh           # Start NIM containers on specific GPUs
+│   ├── start_data_services.sh          # Start Redis, Milvus, PostgreSQL
+│   ├── test_earth2.py                  # Earth-2 integration test
+│   ├── test_openmeteo.py               # Open-Meteo API test
+│   ├── ingest_travel_data.py           # Data scraping & ingestion pipeline
+│   └── setup_milvus.py                 # Milvus collection creation
+│
+└── reports/
+|   └── report_example.py               # Report generation example
+|
+├── .gitignore
+├── LICENSE
+├── README.md                           # Main project documentation
+├── IMPLEMENTATION_GUIDE.md             # Original implementation plan
 ```
+
+---
 
 ### Environment Variables File (`.env`)
 
