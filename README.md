@@ -10,17 +10,18 @@
 2. [Why This Matters Now](#-why-this-matters-now)
 3. [Platform Strategy](#-platform-strategy)
 4. [System Architecture](#-system-architecture)
-5. [Agent Design](#-agent-design) — 7 agents including 2 real-time background agents
-6. [RAG Pipeline](#-rag-pipeline)
-7. [Data & API Sources](#-data--api-sources) — 11 sources including Open-Meteo, SpeedSMS
-8. [Tech Stack](#-tech-stack) — 31 technologies
-9. [Cluster Utilization](#-cluster-utilization)
-10. [User Input / Output](#-user-input--output) — includes real-time SMS alerts + plan export
-11. [UI / Frontend Design](#-ui--frontend-design)
-12. [Deployment](#-deployment)
-13. [Monitoring & Observability](#-monitoring--observability)
-14. [6-Day Plan](#-6-day-plan)
-15. [Future Reuse & Enterprise Value](#-future-reuse--enterprise-value)
+5. [Earth-2 Optimization Workflow](#-earth-2-optimization-workflow) — setup, model routing, output translation, enterprise/travel risk
+6. [Agent Design](#-agent-design) — 8 agents including real-time watcher + notification
+7. [RAG Pipeline](#-rag-pipeline)
+8. [Data & API Sources](#-data--api-sources) — weather, tourism, maps, SMS, and enterprise data
+9. [Tech Stack](#-tech-stack) — NVIDIA + agent + app stack
+10. [Cluster Utilization](#-cluster-utilization)
+11. [User Input / Output](#-user-input--output) — includes real-time SMS alerts + plan export
+12. [UI / Frontend Design](#-ui--frontend-design)
+13. [Deployment](#-deployment)
+14. [Monitoring & Observability](#-monitoring--observability)
+15. [6-Day Plan](#-6-day-plan)
+16. [Future Reuse & Enterprise Value](#-future-reuse--enterprise-value)
 
 ---
 
@@ -42,9 +43,10 @@ The architecture is built as a **reusable multi-agent framework** — swap the d
 
 | Area | Description |
 |------|-------------|
-| 🌤️ **Weather** | Real-time & 15-day forecasts via NVIDIA Earth-2 + Open-Meteo + OpenWeatherMap |
+| 🌤️ **Weather Intelligence** | Earth-2 model workflow using Earth2Studio, FourCastNet/Atlas-style medium-range output, CorrDiff-style downscaling, StormScope-style nowcasting when available, plus Open-Meteo/OpenWeatherMap fallback |
+| 🧩 **Earth-2 Usability Layer** | Simplifies model setup, validates GPU/NIM readiness, parses hard-to-read weather arrays, and converts them into travel/enterprise-ready risk outputs |
 | ✈️ **Travel** | Personalized attraction recommendations with crowd-awareness |
-| ⚡ **Optimization** | GPU-accelerated route optimization via NVIDIA cuOpt |
+| ⚡ **Optimization** | Weather-aware itinerary and route optimization via NVIDIA cuOpt + Valhalla/OSM |
 | 🔔 **Real-Time Alerts** | Proactive weather monitoring → SMS/WebSocket notification → auto re-plan outdoor activities |
 | 📸 **Plan Export** | Save itinerary as beautiful image + QR code for offline access |
 | 🔄 **Reusability** | Domain-agnostic MAS framework applicable to agriculture, logistics, etc. |
@@ -169,7 +171,7 @@ graph TB
         RAG[RAG Pipeline]
         VS[(Milvus<br/>Vector Store)]
         PG[(PostgreSQL<br/>Structured Data)]
-        RD[(Redis<br/>Cache)]
+        RD[(Redis<br/>Cache + Sessions)]
     end
 
     subgraph "🌍 External Services"
@@ -181,6 +183,16 @@ graph TB
         DNOG[Da Nang Open Data<br/>opendata.danang.gov.vn]
     end
 
+    subgraph "🌍 Earth-2 Optimization Pipeline"
+        E2SETUP[Setup Validator<br/>GPU / NIM / Cache Check]
+        E2STUDIO[Earth2Studio<br/>Data + Model Workflow]
+        FCN[FourCastNet / Atlas<br/>Medium-Range 1-15d]
+        CD[CorrDiff<br/>Regional Downscaling]
+        SS[StormScope<br/>0-6h Nowcasting]
+        E2PARSER[Output Parser<br/>xarray/NetCDF/Tensor<br/>→ Weatherise Schema]
+        RISK[Risk Translator<br/>travel + enterprise rules]
+    end
+
     subgraph "⚙️ Infrastructure (8× H200 Cluster)"
         GPU1[GPU 0-1: LLM Serving]
         GPU2[GPU 2-3: Earth-2 Inference]
@@ -188,6 +200,7 @@ graph TB
         GPU4[GPU 6-7: cuOpt + Reserve]
     end
 
+    %% Original flow (same as README.md screenshot)
     UI --> GW
     GW --> WS
     WS --> ORCH
@@ -217,11 +230,29 @@ graph TB
     RAG --> EMB
 
     LLM --> GPU1
-    E2 --> GPU2
     EMB --> GPU3
     CUOPT --> GPU4
 
     ORCH --> LLM
+
+    %% Earth-2 Optimization Pipeline (branches from E2 node)
+    E2 --> E2SETUP
+    E2SETUP --> E2STUDIO
+    E2STUDIO --> FCN
+    E2STUDIO --> CD
+    E2STUDIO --> SS
+    FCN --> E2PARSER
+    CD --> E2PARSER
+    SS --> E2PARSER
+    OWM --> E2PARSER
+    OM --> E2PARSER
+    E2PARSER --> RISK
+    RISK --> WA
+    RISK --> WW
+
+    FCN --> GPU2
+    CD --> GPU2
+    SS --> GPU2
 
     style ORCH fill:#FF6B35,color:#fff,stroke:#333,stroke-width:2px
     style WW fill:#E91E63,color:#fff,stroke:#333,stroke-width:2px
@@ -230,6 +261,13 @@ graph TB
     style CUOPT fill:#76B900,color:#fff
     style UI fill:#2196F3,color:#fff
     style SMS fill:#4CAF50,color:#fff
+    style E2SETUP fill:#76B900,color:#fff,stroke:#333,stroke-width:2px
+    style E2STUDIO fill:#76B900,color:#fff
+    style FCN fill:#76B900,color:#fff
+    style CD fill:#76B900,color:#fff
+    style SS fill:#76B900,color:#fff
+    style E2PARSER fill:#00A1EA,color:#fff
+    style RISK fill:#F97316,color:#fff
 ```
 
 ### Request Flow (Sequence Diagram)
@@ -310,6 +348,157 @@ flowchart LR
 ```
 
 ---
+
+## 🌍 Earth-2 Optimization Workflow
+
+This project should not treat Earth-2 as a black-box weather API. The system adds an **enterprise usability and optimization layer** around Earth-2 so that complex weather-model outputs become readable travel and business decisions.
+
+### Why This Layer Exists
+
+Earth-2-style weather models can output scientific weather fields, tensors, NetCDF/Zarr/xarray objects, or forecast archives. These outputs are powerful, but they are not immediately understandable for travel operators, tourism businesses, logistics teams, event planners, or enterprise users.
+
+Weatherise therefore adds four missing layers:
+
+| Layer | Purpose |
+|------|---------|
+| **Setup Simplification** | Check GPU availability, NIM container status, model cache, Earth2Studio import, API readiness, and fallback source availability |
+| **Model Routing** | Choose the correct model path: medium-range forecast, downscaling, nowcasting, or REST API fallback |
+| **Output Translation** | Convert weather arrays and forecast fields into a standard Weatherise schema |
+| **Decision Optimization** | Convert weather risk into itinerary constraints, alternative recommendations, route changes, and enterprise-ready warnings |
+
+### Earth-2 Tool Usage Map
+
+| Earth-2 / NVIDIA Tool | Role in Weatherise | Output Used For |
+|-----------------------|-------------------|-----------------|
+| **Earth2Studio** | Python workflow layer for weather data/model execution | Standard model workflow and data handling |
+| **FourCastNet / Atlas-style Medium Range** | Medium-range global/regional forecast | 1-15 day weather-aware planning and route/activity scheduling |
+| **CorrDiff-style Downscaling** | Converts coarse forecast fields into higher-resolution regional fields | More localized Da Nang/Vietnam rain and wind risk |
+| **StormScope-style Nowcasting** | Optional 0-6 hour short-term weather monitoring | Real-time alerts before outdoor activities |
+| **NIM Containers** | Local inference deployment pattern on H200 GPUs | Self-hosted model serving and enterprise deployment |
+| **Earth-2 Weather Analytics Blueprint** | Reference architecture | Guides service design, geospatial processing, and dashboard/API structure |
+| **Open-Meteo / OpenWeatherMap Fallback** | Reliability fallback when Earth-2 is unavailable | Keeps demo and enterprise system operational |
+
+### Earth-2-to-Enterprise Data Flow
+
+```mermaid
+flowchart TB
+    subgraph "1. Setup + Health"
+        A[Check H200 GPU Status]
+        B[Check NGC / NIM Credentials]
+        C[Check Earth2Studio Import]
+        D[Check Model Cache + Ports]
+        A --> B --> C --> D
+    end
+
+    subgraph "2. Model Router"
+        MR{Forecast Need?}
+        MR -->|1-15 day plan| FCN[FourCastNet / Atlas-style Medium Range]
+        MR -->|high-resolution local risk| CD[CorrDiff-style Downscaling]
+        MR -->|0-6 hour alert| SS[StormScope-style Nowcasting]
+        MR -->|fallback| API[Open-Meteo / OpenWeatherMap]
+    end
+
+    subgraph "3. Raw Output Layer"
+        RAW[xarray / NetCDF / Zarr / Tensor / Forecast Archive]
+        FCN --> RAW
+        CD --> RAW
+        SS --> RAW
+        API --> RAW
+    end
+
+    subgraph "4. Weatherise Translation Layer"
+        PARSER[Output Parser]
+        SCHEMA[Standard Weatherise Forecast Schema]
+        SIGNAL[Signal Detector<br/>rain / wind / heat / storm]
+        RISK[Risk Translator<br/>travel + enterprise thresholds]
+        RAW --> PARSER --> SCHEMA --> SIGNAL --> RISK
+    end
+
+    subgraph "5. Optimization + Delivery"
+        CONSTRAINTS[Weather Constraints<br/>outdoor suitability, time windows]
+        CUOPT[cuOpt Route Optimization]
+        RAG[RAG Alternatives<br/>indoor attractions, safer routes]
+        FINAL[Readable Output<br/>dashboard card, API JSON, SMS alert]
+        RISK --> CONSTRAINTS
+        CONSTRAINTS --> CUOPT
+        RISK --> RAG
+        CUOPT --> FINAL
+        RAG --> FINAL
+    end
+
+    style FCN fill:#76B900,color:#fff
+    style CD fill:#76B900,color:#fff
+    style SS fill:#76B900,color:#fff
+    style PARSER fill:#00A1EA,color:#fff
+    style RISK fill:#F97316,color:#fff
+    style CUOPT fill:#76B900,color:#fff
+```
+
+### Standard Weatherise Forecast Schema
+
+All Earth-2 outputs and fallback API outputs should be converted into one internal schema before any agent uses them.
+
+```json
+{
+  "source": "earth2_fourcastnet | earth2_corrdiff | earth2_stormscope | open_meteo | openweathermap",
+  "status": "real | fallback | mock",
+  "location": {
+    "name": "Da Nang",
+    "lat": 16.0544,
+    "lon": 108.2022
+  },
+  "time_window": {
+    "start": "2026-06-09T08:00:00+07:00",
+    "end": "2026-06-09T18:00:00+07:00",
+    "horizon": "24h"
+  },
+  "weather_fields": {
+    "precipitation_probability": 0.82,
+    "precipitation_mm": 14.2,
+    "temperature_2m": 31.5,
+    "wind_speed_10m": 29.4,
+    "wind_gust_10m": 45.0,
+    "humidity": 0.86,
+    "cloud_cover": 0.78
+  },
+  "risk_outputs": {
+    "rain_risk": "high",
+    "wind_risk": "medium",
+    "heat_risk": "low",
+    "outdoor_suitability": 0.31,
+    "confidence": 0.74
+  },
+  "explanation": [
+    "High precipitation signal during planned outdoor window",
+    "Wind gust risk is moderate for coastal movement",
+    "Indoor alternative should be prepared"
+  ]
+}
+```
+
+### Enterprise Interpretation Example
+
+Earth-2 may output weather fields, but Weatherise converts them into business or travel decisions.
+
+| Raw Model Output | Weatherise Interpretation |
+|------------------|---------------------------|
+| Precipitation probability: 82% | Outdoor activities should be moved indoors or rescheduled |
+| Wind gust: 45 km/h | Coastal attractions and motorbike routes require caution |
+| Heat index high | Avoid midday hiking / move outdoor activities to early morning |
+| Models disagree | Mark confidence as medium/low and show fallback options |
+
+### Agent Impact
+
+The Earth-2 optimization workflow changes the agent responsibilities:
+
+| Agent | Earth-2-related responsibility |
+|-------|-------------------------------|
+| **Weather Agent** | Calls Earth-2/fallback sources, parses forecast fields, produces travel-impact scores |
+| **Weather Watcher Agent** | Re-checks short-term forecast every 10 minutes and triggers re-plan when risk changes |
+| **Route Optimizer Agent** | Receives weather constraints and re-optimizes itinerary using cuOpt |
+| **Attraction Agent** | Uses weather risk to filter indoor/outdoor alternatives |
+| **Local Expert Agent** | Adds local context: rainy-day alternatives, safety tips, seasonal advice |
+| **Notification Agent** | Sends readable SMS/WebSocket alerts instead of raw weather variables |
 
 ## 🤖 Agent Design
 
@@ -421,17 +610,18 @@ app = graph.compile()
 | Property | Detail |
 |----------|--------|
 | **Role** | Fetches real-time weather + 15-day forecasts, interprets conditions for travel suitability |
-| **Data Sources** | NVIDIA Earth-2 Studio (GPU inference), OpenWeatherMap API (fallback) |
-| **Tools** | `get_current_weather`, `get_forecast_15d`, `assess_travel_suitability` |
-| **Output** | Structured weather data with travel-impact scores (beach_score, hiking_score, etc.) |
+| **Data Sources** | Earth2Studio, FourCastNet/Atlas-style medium range, CorrDiff-style downscaling, StormScope-style nowcasting if available, Open-Meteo/OpenWeatherMap fallback |
+| **Tools** | `check_earth2_status`, `get_current_weather`, `get_forecast_15d`, `get_nowcast_0_6h`, `downscale_region`, `parse_earth2_output`, `assess_travel_suitability` |
+| **Output** | Standard Weatherise forecast schema with weather fields, risk levels, confidence, and travel-impact scores |
 
 **How to build:**
 
-1. Set up Earth-2 Studio with `earth2studio` Python package on GPU 2-3
-2. Load FourCastNet or Earth-2 Medium Range model for 15-day forecast
-3. Create OpenWeatherMap API wrapper as fallback (free tier: 1000 calls/day)
-4. Build `assess_travel_suitability()` tool — converts raw weather → activity scores
-5. Wrap as LangChain `Tool` objects and bind to agent
+1. Create `check_earth2_status()` to verify GPU visibility, Earth2Studio import, local model endpoint, and fallback API availability
+2. Create `earth2_client.py` with one interface for FourCastNet/Atlas-style forecast, CorrDiff-style downscaling, and StormScope-style nowcasting
+3. Create Open-Meteo and OpenWeatherMap wrappers as fallback sources so the demo still works if Earth-2 setup is not ready
+4. Build `parse_earth2_output()` to convert xarray/NetCDF/Zarr/tensor/archive output into the standard Weatherise forecast schema
+5. Build `assess_travel_suitability()` — converts weather fields into beach, hiking, outdoor, route, and enterprise risk scores
+6. Wrap these functions as LangChain tools and bind them to the Weather Agent
 
 **Tech stack:** `earth2studio`, `openweathermap-api`, `numpy`, `langchain tools`
 
@@ -846,17 +1036,19 @@ final_retriever = ContextualCompressionRetriever(
 
 | # | Source | Type | Data Provided | Access |
 |---|--------|------|---------------|--------|
-| 1 | **NVIDIA Earth-2 Studio** | GPU Inference | 15-day weather forecasts, 70+ variables, km-scale resolution | Self-hosted on GPU 2-3 |
-| 2 | **NVIDIA Earth-2 StormScope** | GPU Inference | 0-6hr nowcasting, 3km resolution, 10-min intervals — **real-time** | Self-hosted on GPU 2-3 |
-| 3 | **Open-Meteo API** | REST API | Hourly forecast, precipitation probability, 16-day range | **FREE**, no API key, 10k calls/day |
-| 4 | **OpenWeatherMap API** | REST API | Current weather, 5-day forecast, UV index, air quality | Free tier: 1,000 calls/day |
-| 5 | **Da Nang Open Data** (`opendata.danang.gov.vn`) | REST API | 1,200+ datasets: tourism, transport, accommodation, environment | Free, public API |
-| 6 | **Google Places API** | REST API | Attractions, restaurants, reviews, photos, hours, ratings | $200 free credit/month |
-| 7 | **OpenStreetMap** | Map Data | Road network, POIs, building footprints for Da Nang | Free, open source |
-| 8 | **TripAdvisor** | Web Scraping | Top 100 attractions, 2,000+ reviews | Scrape (ethical) |
-| 9 | **Wikivoyage** | Web Scraping | Da Nang travel guides, cultural info, practical tips | Free, CC license |
-| 10 | **Danang Fantasticity** (`danangfantasticity.com`) | Web Scraping | Official tourism portal: events, attractions, festivals | Free, public |
-| 11 | **SpeedSMS** | REST API | SMS delivery to Vietnamese phone numbers (Viettel, Mobi, Vina) | ~350 VND/msg, free trial |
+| 1 | **Earth2Studio** | Weather AI workflow toolkit | Data/model workflow, model execution, structured weather inference pipeline | Python package / local GPU workflow |
+| 2 | **FourCastNet / Atlas-style Medium Range** | Earth-2 model path | 1-15 day global/regional forecast fields for planning windows | Self-hosted or model client on GPU 2-3 |
+| 3 | **CorrDiff-style Downscaling** | Earth-2 downscaling path | Higher-resolution regional weather fields for Da Nang/Vietnam | Self-hosted or roadmap path on GPU 2-3 |
+| 4 | **StormScope-style Nowcasting** | Earth-2 nowcasting path | 0-6hr short-term weather risk for real-time alerts | Optional / fallback-aware on GPU 2-3 |
+| 5 | **Open-Meteo API** | REST API | Hourly forecast, precipitation probability, 16-day range | **FREE**, no API key, 10k calls/day |
+| 6 | **OpenWeatherMap API** | REST API | Current weather, 5-day forecast, UV index, air quality | Free tier: 1,000 calls/day |
+| 7 | **Da Nang Open Data** (`opendata.danang.gov.vn`) | REST API | Tourism, transport, accommodation, environment datasets | Free, public API |
+| 8 | **Google Places API** | REST API | Attractions, restaurants, reviews, photos, hours, ratings | $200 free credit/month |
+| 9 | **OpenStreetMap** | Map Data | Road network, POIs, building footprints for Da Nang | Free, open source |
+| 10 | **TripAdvisor** | Web Scraping | Top attractions, reviews, practical travel signals | Scrape carefully / respect terms |
+| 11 | **Wikivoyage** | Web Scraping | Da Nang travel guides, cultural info, practical tips | Free, CC license |
+| 12 | **Danang Fantasticity** (`danangfantasticity.com`) | Web Scraping | Official tourism portal: events, attractions, festivals | Free, public |
+| 13 | **SpeedSMS** | REST API | SMS delivery to Vietnamese phone numbers | ~350 VND/msg, free trial |
 
 ### Data Pipeline
 
@@ -986,7 +1178,7 @@ graph TB
 | **LLM Model** | Llama 3.1 Instruct | 70B | Alternative / fallback LLM |
 | **Embedding** | NV-Embed-v2 | - | Document & query embeddings |
 | **Reranker** | NV-Rerank-Mistral | 4B | Search result reranking |
-| **Weather AI** | Earth-2 Studio | Latest | GPU weather forecasting |
+| **Weather AI** | Earth2Studio + FourCastNet/Atlas + CorrDiff + StormScope-style nowcast | Latest / available models | Earth-2 workflow, medium-range forecast, downscaling, and short-term alerting |
 | **Optimization** | NVIDIA cuOpt | Latest | Route optimization (VRP) |
 | **Safety** | NeMo Guardrails | 0.10+ | Input/output validation |
 | **Vector DB** | Milvus | 2.4+ | Vector similarity search |
@@ -1393,8 +1585,11 @@ docker run -d --name cuopt \
   -p 8083:5000 \
   nvcr.io/nvidia/cuopt:latest
 
-# 5. Earth-2 — GPU 2-3 (runs in JupyterLab Python, not container)
+# 5. Earth-2 workflow — GPU 2-3
+# Start with Earth2Studio in Python; add NIM/containerized model paths when available.
 # pip install earth2studio  # inside JupyterLab
+# python scripts/check_earth2_status.py
+# python agents/weather_agent/earth2_client.py --mode fallback-safe
 ```
 
 #### Non-GPU Services (Docker Compose)
