@@ -122,8 +122,8 @@ graph LR
 ## 🏗️ System Architecture
 
 ### High-Level Architecture
-![alt text](image.png)
+![alt text](architecture.png)
 ### Sequence Diagram
-![alt text](image-1.png)
+![alt text](sequencediagram.png)
 ### Tech Stack 
-![alt text](image-3.png)
+![alt text](techstack.png)
