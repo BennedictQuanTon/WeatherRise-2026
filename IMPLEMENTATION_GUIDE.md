@@ -137,9 +137,9 @@ HUGGINGFACE_TOKEN=<your-token>
 LANGSMITH_API_KEY=<optional>
 
 # === Service URLs (set after GPU containers start) ===
-LLM_BASE_URL=http://localhost:8000/v1
-EMBED_BASE_URL=http://localhost:8001/v1
-RERANK_BASE_URL=http://localhost:8002/v1
+LLM_BASE_URL=http://localhost:8001/v1
+EMBED_BASE_URL=http://localhost:8002/v1
+RERANK_BASE_URL=http://localhost:8003/v1
 EARTH2_URL=http://localhost:8081
 CUOPT_URL=http://localhost:8083
 
@@ -206,7 +206,7 @@ docker run -d --name nim-llm \
   --shm-size=16g \
   -e NGC_API_KEY \
   -v /raid/nim-cache:/opt/nim/.cache \
-  -p 8000:8000 \
+  -p 8001:8000 \
   nvcr.io/nim/nvidia/llama-3.1-nemotron-nano-8b-v1:latest
 
 # Option B: Larger model (upgrade on Day 4 for Polish)
@@ -215,14 +215,14 @@ docker run -d --name nim-llm \
 #   --shm-size=32g \
 #   -e NGC_API_KEY \
 #   -v /raid/nim-cache:/opt/nim/.cache \
-#   -p 8000:8000 \
+#   -p 8001:8000 \
 #   nvcr.io/nim/nvidia/nemotron-3-super-49b:latest
 
 # Wait for startup (~5-10 min first time, downloading model)
 docker logs -f nim-llm  # Wait for "Application startup complete"
 
 # Test LLM
-curl http://localhost:8000/v1/chat/completions \
+curl http://localhost:8001/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -d '{
     "model": "nvidia/llama-3.1-nemotron-nano-8b-v1",
@@ -240,12 +240,12 @@ docker run -d --name nim-embed \
   --shm-size=8g \
   -e NGC_API_KEY \
   -v /raid/nim-cache:/opt/nim/.cache \
-  -p 8001:8000 \
+  -p 8002:8000 \
   nvcr.io/nim/nvidia/nv-embedqa-e5-v5:latest
 
 # Wait & test
 docker logs -f nim-embed
-curl http://localhost:8001/v1/embeddings \
+curl http://localhost:8002/v1/embeddings \
   -H 'Content-Type: application/json' \
   -d '{"model":"nvidia/nv-embedqa-e5-v5","input":"Da Nang beach"}'
 ```
@@ -258,7 +258,7 @@ docker run -d --name nim-rerank \
   --shm-size=8g \
   -e NGC_API_KEY \
   -v /raid/nim-cache:/opt/nim/.cache \
-  -p 8002:8000 \
+  -p 8003:8000 \
   nvcr.io/nim/nvidia/nv-rerankqa-mistral-4b-v3:latest
 
 # Test
@@ -273,7 +273,7 @@ docker run -d --name cuopt \
   -e NGC_API_KEY \
   -v /raid/nim-cache:/opt/nim/.cache \
   -p 8083:5000 \
-  nvcr.io/nvidia/cuopt:latest
+  nvidia/cuopt:latest-cuda13.0-py3.13
 
 docker logs -f cuopt
 ```
@@ -343,14 +343,14 @@ docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 #!/bin/bash
 echo "=== Weatherise Service Health Check ==="
 
-echo -n "LLM NIM (port 8000):   "
-curl -s http://localhost:8000/v1/models | python3 -c "import sys,json; d=json.load(sys.stdin); print('✅', d['data'][0]['id'])" 2>/dev/null || echo "❌ DOWN"
-
-echo -n "Embed NIM (port 8001): "
+echo -n "LLM NIM (port 8001):   "
 curl -s http://localhost:8001/v1/models | python3 -c "import sys,json; d=json.load(sys.stdin); print('✅', d['data'][0]['id'])" 2>/dev/null || echo "❌ DOWN"
 
-echo -n "Rerank NIM (port 8002):"
+echo -n "Embed NIM (port 8002): "
 curl -s http://localhost:8002/v1/models | python3 -c "import sys,json; d=json.load(sys.stdin); print('✅', d['data'][0]['id'])" 2>/dev/null || echo "❌ DOWN"
+
+echo -n "Rerank NIM (port 8003):"
+curl -s http://localhost:8003/v1/models | python3 -c "import sys,json; d=json.load(sys.stdin); print('✅', d['data'][0]['id'])" 2>/dev/null || echo "❌ DOWN"
 
 echo -n "cuOpt (port 8083):     "
 curl -s http://localhost:8083/health 2>/dev/null && echo " ✅" || echo "❌ DOWN"
@@ -396,15 +396,15 @@ echo "=== Done ==="
 - [x] Directory structure created at `/raid/team/test/weatherise/`
 - [x] Code uploaded from laptop
 - [x] `.env` file uploaded
-- [ ] NIM LLM running on GPU 0-1 (port 8000) → tested with curl
-- [ ] NIM Embedding running on GPU 4 (port 8001) → tested with curl
-- [ ] NIM Reranker running on GPU 5 (port 8002) → tested
-- [ ] cuOpt running on GPU 6 (port 8083) → tested
+- [x] NIM LLM running on GPU 0-1 (port 8001) → tested with curl
+- [x] NIM Embedding running on GPU 4 (port 8002) → tested with curl
+- [x] NIM Reranker running on GPU 5 (port 8003) → tested
+- [x] cuOpt running on GPU 6 (port 8084) → tested
 - [ ] Earth-2 Studio installed + StormScope model downloaded
 - [x] Redis running (port 6379) → PING=PONG
 - [x] Milvus running (port 19530) → healthz OK
 - [x] PostgreSQL running (port 5432) → pg_isready OK
-- [ ] `healthcheck.sh` passes ALL services ✅
+- [x] `healthcheck.sh` passes ALL services ✅
 
 ---
 
