@@ -135,15 +135,23 @@ graph LR
 
 ```mermaid
 graph TB
+    %% 1. Tầng User & Browser
+    subgraph "👤 User Space"
+        Client[Client] <-->|HTTPS / WSS| Browser[Browser]
+    end
+
+    %% 2. Tầng Frontend
     subgraph "🖥️ Frontend Layer"
         UI[Next.js PWA / Gradio UI]
     end
 
+    %% 3. Tầng API Gateway
     subgraph "🔌 API Gateway"
         GW[FastAPI Gateway]
         WS[WebSocket Stream]
     end
 
+    %% 4. Tầng Multi-Agent Orchestration Layer (Xử lý đồng bộ)
     subgraph "🤖 Multi-Agent Orchestration Layer"
         ORCH[Orchestrator Agent<br/>LangGraph StateGraph]
         WA[Weather Agent]
@@ -151,42 +159,52 @@ graph TB
         RA[Route Optimizer Agent]
         LA[Local Expert Agent]
         SA[Safety Agent]
-        WW[Weather Watcher Agent<br/>Real-Time Monitor]
     end
 
+    %% 5. Tầng Real-Time Monitor (Xử lý bất đồng bộ - chạy ngầm)
+    subgraph "⏰ Real-Time Monitor (Background)"
+        WW[Weather Watcher Agent<br/>Real-Time Monitor]
+        NA[Notification Agent<br/>SMS & WebSocket Manager]
+    end
+
+    %% 6. Tầng Notification
     subgraph "📱 Notification Layer"
         SMS[SpeedSMS<br/>Vietnam SMS API]
         WSOCK[WebSocket Push]
     end
 
+    %% 7. Tầng Intelligence
     subgraph "🧠 Intelligence Layer"
         LLM[Nemotron / Llama 3.1<br/>via NIM]
         EMB[Embedding Model<br/>NV-Embed-v2]
         GR[NeMo Guardrails]
     end
 
+    %% 8. Tầng Knowledge
     subgraph "📚 Knowledge Layer"
         RAG[RAG Pipeline]
         VS[(Milvus<br/>Vector Store)]
         PG[(PostgreSQL<br/>Structured Data)]
-        RD[(Redis<br/>Cache)]
+        RD[(Redis Cache<br/>Sessions & Weather)]
     end
 
+    %% 9. Tầng External Services & Models
     subgraph "🌍 External Services"
-        subgraph "🌦️ NVIDIA Earth-2 Stack - GPU 2-3"
-            E2FW["Earth2Studio<br/>Python Framework"]
+        subgraph "🌦️ NVIDIA Earth-2 Stack (GPU 2-3)"
             E2DATA["GFS Data Source<br/>Initial Conditions"]
+            E2FW["Earth2Studio<br/>Python Framework"]
             E2ATLAS["Atlas Model<br/>Medium Range 15-day<br/>~25km Global"]
-            E2CORR["CorrDiff Model<br/>Downscaling 25km to 2km<br/>Future - No VN Model Yet"]
-            E2STORM["StormScope Model<br/>Nowcasting 0-6hr<br/>Future - US Coverage Only"]
+            E2CORR["CorrDiff Model<br/>Downscaling 25km to 2km<br/>(Future VN Model)"]
+            E2STORM["StormScope Model<br/>Nowcasting 0-6hr<br/>(Future VN Model)"]
         end
         OWM[OpenWeatherMap API<br/>Current + 5-day]
-        OM[Open-Meteo API<br/>Free Hourly 16-day<br/>Global Coverage]
+        OM[Open-Meteo API<br/>Free Hourly 16-day]
         CUOPT[NVIDIA cuOpt<br/>Route Optimization]
         OSM[OpenStreetMap<br/>Valhalla Routing]
         DNOG[Da Nang Open Data<br/>opendata.danang.gov.vn]
     end
 
+    %% 10. Tầng Infrastructure (8x H200 Cluster)
     subgraph "⚙️ Infrastructure (8× H200 Cluster)"
         GPU1[GPU 0-1: LLM Serving]
         GPU2[GPU 2-3: Earth-2 Inference]
@@ -194,48 +212,75 @@ graph TB
         GPU4[GPU 6-7: cuOpt + Reserve]
     end
 
+    %% --- ĐƯỜNG KẾT NỐI HỆ THỐNG ---
+
+    %% Luồng Request của User
+    Browser <--> UI
     UI --> GW
     GW --> WS
     WS --> ORCH
+
+    %% Luồng Orchestrator phân phối việc cho Specialist Agents
     ORCH --> WA
     ORCH --> AA
     ORCH --> RA
     ORCH --> LA
     ORCH --> SA
 
+    %% Tương tác của các Agent với Intelligence Layer (LLM) & RAG
+    ORCH --> LLM
+    AA --> LLM
+    LA --> LLM
+    RA --> LLM
+    SA --> GR
+
+    %% Tương tác của các Agent với các Layer Dữ liệu & Dịch vụ ngoài
     WA --> E2FW
     WA --> OWM
     WA --> OM
+    WA --> RD
+
     AA --> RAG
-    AA --> DNOG
+    LA --> RAG
+
     RA --> CUOPT
     RA --> OSM
-    LA --> RAG
-    SA --> GR
-    WW --> OM
-    E2DATA --> E2FW
-    E2FW --> E2ATLAS
-    E2ATLAS -.->|"future"| E2CORR
-    E2FW -.->|"future"| E2STORM
-    WW --> OWM
-    WW --> RD
-    WW --> SMS
-    WW --> WSOCK
-    WSOCK --> UI
 
+    %% Luồng RAG Pipeline nội bộ
     RAG --> VS
     RAG --> PG
     RAG --> EMB
+    DNOG --> RAG
 
-    LLM --> GPU1
-    E2FW --> GPU2
-    EMB --> GPU3
-    CUOPT --> GPU4
+    %% Vòng lặp cảnh báo thời tiết chạy ngầm (Background Alert & Re-plan Loop)
+    ORCH -->|1. Register active session| RD
+    WW -->|2. Scan active sessions| RD
+    WW -->|3. Query live forecast| OM
+    WW -->|3. Query live forecast| OWM
+    WW -->|4. Detect conflict| NA
+    NA -->|5. Trigger Re-plan Request| ORCH
+    NA -->|5. Send SMS| SMS
+    NA -->|5. Push WebSocket| WSOCK
+    WSOCK -.->|realtime alert| UI
+    SMS -.->|SMS alert| Client
 
-    ORCH --> LLM
+    %% NVIDIA Earth-2 Stack Pipeline
+    E2DATA --> E2FW
+    E2FW --> E2ATLAS
+    E2ATLAS -.->|"future"| E2CORR
+    E2CORR -.->|"future"| E2STORM
 
+    %% Infrastructure (Tăng tốc phần cứng - Nét đứt hướng lên)
+    GPU1 -.-> LLM
+    GPU2 -.-> E2ATLAS
+    GPU3 -.-> RAG
+    GPU3 -.-> EMB
+    GPU4 -.-> CUOPT
+
+    %% Style & Màu sắc
     style ORCH fill:#FF6B35,color:#fff,stroke:#333,stroke-width:2px
     style WW fill:#E91E63,color:#fff,stroke:#333,stroke-width:2px
+    style NA fill:#E91E63,color:#fff,stroke:#333,stroke-width:2px
     style LLM fill:#76B900,color:#fff
     style E2FW fill:#76B900,color:#fff
     style E2ATLAS fill:#1565C0,color:#fff
@@ -246,8 +291,9 @@ graph TB
     style UI fill:#2196F3,color:#fff
     style SMS fill:#4CAF50,color:#fff
     style OM fill:#4CAF50,color:#fff
+    style RD fill:#DC382D,color:#fff
 ```
-
+![alt text](diagram/system_architecture.png)
 ### Request Flow (Sequence Diagram)
 
 ```mermaid
