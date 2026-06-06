@@ -10,7 +10,7 @@
 2. [Why This Matters Now](#-why-this-matters-now)
 3. [Platform Strategy](#-platform-strategy)
 4. [System Architecture](#-system-architecture)
-5. [Agent Design](#-agent-design) — 7 agents including 2 real-time background agents
+5. [Agent Design](#-agent-design) — 8 agents including 2 real-time background agents
 6. [RAG Pipeline](#-rag-pipeline)
 7. [Data & API Sources](#-data--api-sources) — 11 sources including Open-Meteo, SpeedSMS
 8. [Tech Stack](#-tech-stack) — 31 technologies
@@ -42,7 +42,7 @@ The architecture is built as a **reusable multi-agent framework** — swap the d
 
 | Area | Description |
 |------|-------------|
-| 🌤️ **Weather** | Real-time & 15-day forecasts via NVIDIA Earth-2 + Open-Meteo + OpenWeatherMap |
+| 🌤️ **Weather** | 15-day forecasts via NVIDIA Earth-2 Atlas (Medium Range) through Earth2Studio + Open-Meteo (hourly detail) + OpenWeatherMap (current conditions) |
 | ✈️ **Travel** | Personalized attraction recommendations with crowd-awareness |
 | ⚡ **Optimization** | GPU-accelerated route optimization via NVIDIA cuOpt |
 | 🔔 **Real-Time Alerts** | Proactive weather monitoring → SMS/WebSocket notification → auto re-plan outdoor activities |
@@ -56,7 +56,7 @@ The architecture is built as a **reusable multi-agent framework** — swap the d
 | Minimum | 1 day | Half-day/day trip |
 | Default | 2-3 days | Most common Da Nang trip |
 | **Recommended max** | **7 days** | Forecast accuracy high, itinerary quality optimal |
-| Hard limit | 15 days | Earth-2 Medium Range forecast boundary |
+| Hard limit | 15 days | Earth-2 Atlas (Medium Range) forecast boundary |
 
 ---
 
@@ -173,9 +173,15 @@ graph TB
     end
 
     subgraph "🌍 External Services"
-        E2[NVIDIA Earth-2<br/>Weather Forecast]
-        OWM[OpenWeatherMap API]
-        OM[Open-Meteo API<br/>Free Hourly Forecast]
+        subgraph "🌦️ NVIDIA Earth-2 Stack - GPU 2-3"
+            E2FW["Earth2Studio<br/>Python Framework"]
+            E2DATA["GFS Data Source<br/>Initial Conditions"]
+            E2ATLAS["Atlas Model<br/>Medium Range 15-day<br/>~25km Global"]
+            E2CORR["CorrDiff Model<br/>Downscaling 25km to 2km<br/>Future - No VN Model Yet"]
+            E2STORM["StormScope Model<br/>Nowcasting 0-6hr<br/>Future - US Coverage Only"]
+        end
+        OWM[OpenWeatherMap API<br/>Current + 5-day]
+        OM[Open-Meteo API<br/>Free Hourly 16-day<br/>Global Coverage]
         CUOPT[NVIDIA cuOpt<br/>Route Optimization]
         OSM[OpenStreetMap<br/>Valhalla Routing]
         DNOG[Da Nang Open Data<br/>opendata.danang.gov.vn]
@@ -197,16 +203,21 @@ graph TB
     ORCH --> LA
     ORCH --> SA
 
-    WA --> E2
+    WA --> E2FW
     WA --> OWM
+    WA --> OM
     AA --> RAG
     AA --> DNOG
     RA --> CUOPT
     RA --> OSM
     LA --> RAG
     SA --> GR
-    WW --> E2
     WW --> OM
+    E2DATA --> E2FW
+    E2FW --> E2ATLAS
+    E2ATLAS -.->|"future"| E2CORR
+    E2FW -.->|"future"| E2STORM
+    WW --> OWM
     WW --> RD
     WW --> SMS
     WW --> WSOCK
@@ -217,7 +228,7 @@ graph TB
     RAG --> EMB
 
     LLM --> GPU1
-    E2 --> GPU2
+    E2FW --> GPU2
     EMB --> GPU3
     CUOPT --> GPU4
 
@@ -226,10 +237,15 @@ graph TB
     style ORCH fill:#FF6B35,color:#fff,stroke:#333,stroke-width:2px
     style WW fill:#E91E63,color:#fff,stroke:#333,stroke-width:2px
     style LLM fill:#76B900,color:#fff
-    style E2 fill:#76B900,color:#fff
+    style E2FW fill:#76B900,color:#fff
+    style E2ATLAS fill:#1565C0,color:#fff
+    style E2CORR fill:#9E9E9E,color:#fff
+    style E2STORM fill:#9E9E9E,color:#fff
+    style E2DATA fill:#0D47A1,color:#fff
     style CUOPT fill:#76B900,color:#fff
     style UI fill:#2196F3,color:#fff
     style SMS fill:#4CAF50,color:#fff
+    style OM fill:#4CAF50,color:#fff
 ```
 
 ### Request Flow (Sequence Diagram)
@@ -242,8 +258,11 @@ sequenceDiagram
     participant O as 🎯 Orchestrator
     participant W as 🌦️ Weather Agent
     participant A as 🏖️ Attraction Agent
-    participant R as 🗺️ Route Agent
     participant L as 🍜 Local Expert
+    participant R as 🗺️ Route Agent
+    participant S as 🛡️ Safety Agent
+    participant WW as 🔔 Weather Watcher
+    participant NA as 📱 Notification Agent
 
     U->>FE: "I have 2 days in Da Nang,<br/>love beaches & food"
     FE->>API: POST /chat (WebSocket)
@@ -253,6 +272,7 @@ sequenceDiagram
     
     par Parallel Agent Execution
         O->>W: Get 2-day forecast
+        Note over W: Earth-2 Atlas (GPU 2)<br/>+ Open-Meteo + OWM
         W-->>O: ☀️ Day1: Sunny 32°C<br/>🌧️ Day2: Rain 70%
         
         O->>A: Find beach & food spots
@@ -263,16 +283,32 @@ sequenceDiagram
     end
 
     O->>R: Optimize route with constraints
-    Note over R: Weather-aware routing:<br/>Outdoor Day1, Indoor Day2
+    Note over R: cuOpt GPU 6 — Weather-aware:<br/>Outdoor Day1, Indoor Day2
     R-->>O: Optimized 2-day itinerary
+
+    O->>S: Validate final response
+    Note over S: NeMo Guardrails:<br/>fact-check, safety, tone
+    S-->>O: ✅ Approved
 
     O->>O: Synthesize final plan
     O-->>API: Stream response
     API-->>FE: SSE/WebSocket stream
     FE-->>U: 📋 Interactive itinerary<br/>with map & weather overlay
+
+    rect rgb(50, 20, 60)
+        Note over WW,NA: ⏰ Background — Every 10 min
+        WW->>WW: Check Open-Meteo + OWM
+        WW->>WW: Scan active itineraries in Redis
+        alt Weather conflict detected (rain >60%)
+            WW->>NA: Conflict alert + indoor alternatives
+            NA->>U: 📱 SMS: "🌧️ Rain 80% at 18:00.<br/>Suggest: Cham Museum (indoor, 2.1km)"
+            NA->>FE: WebSocket push notification
+            NA->>O: Re-plan request
+        end
+    end
 ```
 
-### Data Flow Architecture
+### Data Flow Architecture For RAG Pipeline
 
 ```mermaid
 flowchart LR
@@ -313,7 +349,7 @@ flowchart LR
 
 ## 🤖 Agent Design
 
-The system uses **7 specialized agents** coordinated by a central **Orchestrator** via LangGraph's `StateGraph`. Each agent is a self-contained module with its own tools, prompts, and data sources. This includes **2 real-time agents** (Weather Watcher + Notification) that run as background processes for proactive alerting.
+The system uses **8 specialized agents** coordinated by a central **Orchestrator** via LangGraph's `StateGraph`. Each agent is a self-contained module with its own tools, prompts, and data sources. This includes **5 specialist agents** (Weather, Attraction, Route, Local Expert, Safety) for on-demand queries and **2 real-time background agents** (Weather Watcher + Notification) for proactive alerting.
 
 ### Agent Overview
 
@@ -324,7 +360,7 @@ graph TB
     end
 
     subgraph "Specialist Agents"
-        W["🌦️ Weather Agent<br/>Earth-2 + OWM"]
+        W["🌦️ Weather Agent<br/>Earth-2 Atlas + OWM + Open-Meteo"]
         A["🏖️ Attraction Agent<br/>RAG + Da Nang Data"]
         R["🗺️ Route Agent<br/>cuOpt + Valhalla"]
         L["🍜 Local Expert Agent<br/>RAG + Reviews"]
@@ -332,7 +368,7 @@ graph TB
     end
 
     subgraph "Real-Time Agents (Background)"
-        WW["🔔 Weather Watcher<br/>StormScope + Open-Meteo<br/>Every 10 min"]
+        WW["🔔 Weather Watcher<br/>Open-Meteo + OWM<br/>Every 10 min"]
         NA["📱 Notification Agent<br/>SMS + WebSocket"]
     end
 
@@ -421,19 +457,74 @@ app = graph.compile()
 | Property | Detail |
 |----------|--------|
 | **Role** | Fetches real-time weather + 15-day forecasts, interprets conditions for travel suitability |
-| **Data Sources** | NVIDIA Earth-2 Studio (GPU inference), OpenWeatherMap API (fallback) |
+| **Data Sources** | NVIDIA Earth-2 Atlas via Earth2Studio (GPU inference, primary 15-day), Open-Meteo API (free hourly detail), OpenWeatherMap API (current conditions fallback) |
 | **Tools** | `get_current_weather`, `get_forecast_15d`, `assess_travel_suitability` |
 | **Output** | Structured weather data with travel-impact scores (beach_score, hiking_score, etc.) |
 
+**Earth-2 Internal Pipeline:**
+
+> Earth2Studio is a **framework** (like LangChain for LLMs), not a model itself. It orchestrates the following internal pipeline:
+>
+> ```
+> GFS Data Source (Initial Conditions) → Earth2Studio Framework → Atlas Model (15-day forecast) → Output (Zarr/NetCDF4)
+>                                                                      ↓ (future)
+>                                                               CorrDiff Model (25km → 2km downscaling)
+> ```
+
+| Earth-2 Component | Type | Role in Weatherise | Status |
+|-------------------|------|--------------------|---------|
+| **Earth2Studio** | Python framework | Orchestrate data loading, model inference, output | ✅ Primary — `pip install earth2studio` |
+| **GFS** (via `earth2studio.data.GFS`) | Data source | Provide real-time global atmospheric initial conditions | ✅ Primary — global coverage |
+| **ERA5** (via `earth2studio.data.ARCO`) | Data source | Historical validation & analysis | 🔶 Optional — for validation only |
+| **Atlas** (Earth-2 Medium Range) | Prognostic model | 15-day global forecast, 70+ variables, ~25km resolution | ✅ Primary — `earth2studio.models.px` |
+| **FourCastNet (FCN3)** | Prognostic model | Short-to-medium range forecast (SFNO architecture) | ⚠️ Fallback — older model, Atlas preferred |
+| **CorrDiff** | Diagnostic model | Downscaling 25km → 2km regional resolution | ❌ Future — no pre-trained Vietnam model yet |
+| **StormScope** | Prognostic model | Nowcasting 0-6hr, km-scale, 10-min intervals | ❌ Future — only trained on US (GOES) satellite data |
+| **HealDA** | Data assimilation | AI-generated initial conditions (replaces GFS) | 🔶 Optional — GFS sufficient for hackathon |
+
+> **⚠️ Important Notes:**
+> - **StormScope** currently only covers US (GOES satellite). NOT viable for Da Nang.
+> - **CorrDiff** only has pre-trained models for Taiwan and CONUS. No Vietnam regional model.
+> - **HRRR** data source only covers North America. Use **GFS** or **IFS** for Da Nang.
+> - For high-resolution local data, **Open-Meteo API** (free, global, hourly) fills the gap.
+
 **How to build:**
 
-1. Set up Earth-2 Studio with `earth2studio` Python package on GPU 2-3
-2. Load FourCastNet or Earth-2 Medium Range model for 15-day forecast
-3. Create OpenWeatherMap API wrapper as fallback (free tier: 1000 calls/day)
-4. Build `assess_travel_suitability()` tool — converts raw weather → activity scores
-5. Wrap as LangChain `Tool` objects and bind to agent
+1. Set up Earth2Studio with `pip install earth2studio` on GPU 2-3 (inside JupyterLab or Docker)
+2. Load **Atlas (Earth-2 Medium Range)** model as primary for 15-day forecast
+3. Configure **GFS** as initial conditions data source (`earth2studio.data.GFS`)
+4. Create **Open-Meteo API** wrapper for hourly detail + 15-minute intervals (free, global)
+5. Create **OpenWeatherMap API** wrapper as secondary (current conditions, UV, air quality)
+6. Build `assess_travel_suitability()` tool — converts raw weather → activity scores
+7. Wrap all as LangChain `Tool` objects and bind to agent
+8. *(Future)* Add FourCastNet as fallback if Atlas fails to load
 
-**Tech stack:** `earth2studio`, `openweathermap-api`, `numpy`, `langchain tools`
+```python
+# Earth2Studio inference for Weather Agent (simplified)
+from earth2studio.data import GFS
+from earth2studio.models.px import FCN3  # or Atlas when available
+from earth2studio.run import deterministic
+from earth2studio.io import ZarrBackend
+import datetime
+
+def get_earth2_forecast(target_date: str, nsteps: int = 40):
+    """Run Earth-2 Atlas/FCN3 15-day forecast via Earth2Studio on GPU 2-3."""
+    # 1. Fetch initial conditions from GFS (real-time global data)
+    data_source = GFS()
+    
+    # 2. Load pre-trained model (Atlas preferred, FCN3 as fallback)
+    model = FCN3.load_model(FCN3.load_default_package())
+    
+    # 3. Define output backend
+    io = ZarrBackend("outputs/forecast.zarr")
+    
+    # 4. Run deterministic forecast (6hr steps × 40 = 10 days)
+    deterministic([target_date], nsteps, model, data_source, io)
+    
+    return io  # Contains temperature, wind, humidity, pressure, etc.
+```
+
+**Tech stack:** `earth2studio`, `open-meteo` (REST), `openweathermap-api`, `numpy`, `xarray`, `langchain tools`
 
 ---
 
@@ -543,17 +634,20 @@ def optimize_route(waypoints, time_windows, weather_constraints):
 |----------|--------|
 | **Role** | Continuously monitors weather and detects conflicts with active itineraries |
 | **Trigger** | APScheduler background job, runs **every 10 minutes** |
-| **Data Sources** | Earth-2 StormScope (GPU 2-3, 0-6hr nowcast, 3km resolution, 10-min intervals), Open-Meteo API (free, hourly, no API key) |
+| **Data Sources** | **Open-Meteo API** (primary — free, global, hourly + `minutely_15` endpoint for 15-min intervals), **OpenWeatherMap API** (secondary — current conditions, UV index) |
 | **Logic** | 30 minutes before each outdoor activity → check latest forecast → if rain >60% or extreme heat >38°C → flag conflict |
 | **Output** | Conflict alert → triggers Notification Agent → triggers Orchestrator re-plan |
+
+> **⚠️ StormScope Note:** The original design intended to use Earth-2 StormScope for 0-6hr nowcasting on GPU 2-3. However, **StormScope is currently only trained on US (GOES satellite) data** and does not cover Da Nang/Vietnam. Open-Meteo API with `minutely_15` endpoint serves as the practical replacement with global coverage. When NVIDIA releases regional StormScope models for Southeast Asia, this agent can be upgraded to GPU-accelerated nowcasting.
 
 **How to build:**
 
 1. Install `apscheduler` for background job scheduling
-2. Create `weather_watcher.py` — runs every 10 min, queries Earth-2 StormScope + Open-Meteo for Da Nang (lat: 16.0544, lng: 108.2022)
-3. Fetch all active itineraries from Redis (`session:* → {itinerary, phone}`)
-4. For each upcoming outdoor activity (within next 2 hours): compare forecast vs activity type
-5. If conflict detected → push to Notification Agent with conflict details + 2-3 indoor alternatives from RAG
+2. Create `weather_watcher.py` — runs every 10 min, queries **Open-Meteo** (primary, free, no API key) + **OpenWeatherMap** (secondary, current conditions) for Da Nang (lat: 16.0544, lng: 108.2022)
+3. Use Open-Meteo's `minutely_15` endpoint for high-resolution 15-minute precipitation data
+4. Fetch all active itineraries from Redis (`session:* → {itinerary, phone}`)
+5. For each upcoming outdoor activity (within next 2 hours): compare forecast vs activity type
+6. If conflict detected → push to Notification Agent with conflict details + 2-3 indoor alternatives from RAG
 
 ```python
 # Weather Watcher pseudocode
@@ -561,31 +655,39 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import httpx
 
 async def watch_weather():
-    # 1. Get latest forecast from Open-Meteo (FREE, no key)
+    # 1. Get latest forecast from Open-Meteo (FREE, no key, global coverage)
+    #    Using minutely_15 for high-resolution 15-min precipitation data
     forecast = await httpx.get(
         "https://api.open-meteo.com/v1/forecast",
         params={
             "latitude": 16.0544, "longitude": 108.2022,
             "hourly": "precipitation_probability,temperature_2m,weathercode",
+            "minutely_15": "precipitation,precipitation_probability",
             "timezone": "Asia/Ho_Chi_Minh", "forecast_days": 2
         }
     )
     
-    # 2. Scan active itineraries in Redis
+    # 2. Get current conditions from OpenWeatherMap (UV, real-time temp)
+    current = await httpx.get(
+        "https://api.openweathermap.org/data/2.5/weather",
+        params={"lat": 16.0544, "lon": 108.2022, "appid": OWM_API_KEY}
+    )
+    
+    # 3. Scan active itineraries in Redis
     for session in redis.scan_iter("session:*"):
         itinerary = redis.hgetall(session)
         for item in itinerary["plan"]:
             if item["type"] == "outdoor" and is_within_2_hours(item["time"]):
                 rain_prob = get_rain_prob_at(forecast, item["time"])
                 if rain_prob > 60:
-                    # 3. Trigger re-plan + notification
+                    # 4. Trigger re-plan + notification
                     await notify_agent.send_alert(session, item, rain_prob)
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(watch_weather, 'interval', minutes=10)
 ```
 
-**Tech stack:** `apscheduler`, `httpx`, `redis`, `earth2studio`
+**Tech stack:** `apscheduler`, `httpx`, `redis`
 
 ---
 
@@ -846,9 +948,9 @@ final_retriever = ContextualCompressionRetriever(
 
 | # | Source | Type | Data Provided | Access |
 |---|--------|------|---------------|--------|
-| 1 | **NVIDIA Earth-2 Studio** | GPU Inference | 15-day weather forecasts, 70+ variables, km-scale resolution | Self-hosted on GPU 2-3 |
-| 2 | **NVIDIA Earth-2 StormScope** | GPU Inference | 0-6hr nowcasting, 3km resolution, 10-min intervals — **real-time** | Self-hosted on GPU 2-3 |
-| 3 | **Open-Meteo API** | REST API | Hourly forecast, precipitation probability, 16-day range | **FREE**, no API key, 10k calls/day |
+| 1 | **Earth2Studio + Atlas** (Earth-2 Medium Range) | GPU Inference | 15-day global weather forecasts, 70+ variables, ~25km resolution | Self-hosted on GPU 2 via `earth2studio` Python library |
+| 2 | **GFS** (via `earth2studio.data.GFS`) | Data Source | Real-time global atmospheric initial conditions for Earth-2 models | Built-in Earth2Studio adapter, auto-fetched |
+| 3 | **Open-Meteo API** | REST API | Hourly forecast, precipitation probability, 16-day range, `minutely_15` for 15-min resolution | **FREE**, no API key, 10k calls/day, **global coverage** |
 | 4 | **OpenWeatherMap API** | REST API | Current weather, 5-day forecast, UV index, air quality | Free tier: 1,000 calls/day |
 | 5 | **Da Nang Open Data** (`opendata.danang.gov.vn`) | REST API | 1,200+ datasets: tourism, transport, accommodation, environment | Free, public API |
 | 6 | **Google Places API** | REST API | Attractions, restaurants, reviews, photos, hours, ratings | $200 free credit/month |
@@ -858,14 +960,25 @@ final_retriever = ContextualCompressionRetriever(
 | 10 | **Danang Fantasticity** (`danangfantasticity.com`) | Web Scraping | Official tourism portal: events, attractions, festivals | Free, public |
 | 11 | **SpeedSMS** | REST API | SMS delivery to Vietnamese phone numbers (Viettel, Mobi, Vina) | ~350 VND/msg, free trial |
 
+> **Earth-2 Models NOT currently used (future expansion):**
+> - **StormScope** (Nowcasting, 0-6hr, 3km): Only trained on US GOES satellite data — no Vietnam coverage yet
+> - **CorrDiff** (Downscaling, 25km→2km): Only pre-trained for Taiwan and CONUS — no Vietnam regional model
+> - **HRRR** (Data Source): North America only — use GFS or IFS for Da Nang
+> - **HealDA** (Data Assimilation): AI-generated initial conditions — GFS is sufficient for current needs
+
 ### Data Pipeline
 
 ```mermaid
 flowchart LR
     subgraph "Real-Time (Every 10 min via Weather Watcher)"
         OWM[OpenWeatherMap] -->|REST| REDIS[(Redis Cache)]
-        E2[Earth-2 StormScope] -->|GPU Nowcast| REDIS
-        OM[Open-Meteo] -->|REST, FREE| REDIS
+        OM[Open-Meteo<br/>hourly + minutely_15] -->|REST, FREE| REDIS
+    end
+
+    subgraph "On-Demand (Per User Query via Weather Agent)"
+        GFS_DATA[GFS Initial Conditions] -->|earth2studio.data| E2FW[Earth2Studio Framework]
+        E2FW -->|GPU 2 inference| ATLAS[Atlas Model<br/>15-day Forecast]
+        ATLAS -->|forecast result| REDIS
     end
 
     subgraph "Daily Update"
@@ -886,6 +999,9 @@ flowchart LR
     style REDIS fill:#DC382D,color:#fff
     style PG fill:#336791,color:#fff
     style MILVUS fill:#00A1EA,color:#fff
+    style ATLAS fill:#1565C0,color:#fff
+    style E2FW fill:#76B900,color:#fff
+    style OM fill:#4CAF50,color:#fff
 ```
 
 ---
@@ -922,8 +1038,10 @@ graph TB
         LLAMA[Llama 3.1 70B Instruct]
         NVEMB[NV-Embed-v2]
         NVRR[NV-Rerank-Mistral-4B]
-        E2M[Earth-2 Medium Range]
-        E2S2[Earth-2 StormScope]
+        E2M[Earth-2 Atlas<br/>Medium Range 15-day]
+        E2FCN[Earth-2 FourCastNet<br/>Fallback]
+        E2CORR["Earth-2 CorrDiff<br/>Downscaling (Future)"]
+        E2STORM["Earth-2 StormScope<br/>Nowcasting (Future)"]
     end
 
     subgraph "💾 Data Layer"
@@ -941,7 +1059,8 @@ graph TB
 
     subgraph "🔲 NVIDIA Stack"
         CU[cuOpt - Route Optimization]
-        E2S[Earth-2 Studio]
+        E2S[Earth2Studio - Weather Framework]
+        E2GFSDATA[GFS - Initial Conditions]
         NIM[NIM Containers]
         NEMO[NeMo Toolkit]
     end
@@ -962,15 +1081,23 @@ graph TB
     LC --> E2S
     VLLM --> NEM
     VLLM --> LLAMA
+    E2GFSDATA --> E2S
+    E2S --> E2M
+    E2S -.-> E2FCN
     APS --> OME
     APS --> SMS
 
     style NEM fill:#76B900,color:#fff
-    style E2M fill:#76B900,color:#fff
+    style E2M fill:#1565C0,color:#fff
+    style E2FCN fill:#42A5F5,color:#fff
+    style E2CORR fill:#9E9E9E,color:#fff
+    style E2STORM fill:#9E9E9E,color:#fff
     style CU fill:#76B900,color:#fff
     style NEMO fill:#76B900,color:#fff
+    style E2S fill:#76B900,color:#fff
     style SMS fill:#4CAF50,color:#fff
     style APS fill:#E91E63,color:#fff
+    style OME fill:#4CAF50,color:#fff
 ```
 
 ### Stack by Category
@@ -986,7 +1113,12 @@ graph TB
 | **LLM Model** | Llama 3.1 Instruct | 70B | Alternative / fallback LLM |
 | **Embedding** | NV-Embed-v2 | - | Document & query embeddings |
 | **Reranker** | NV-Rerank-Mistral | 4B | Search result reranking |
-| **Weather AI** | Earth-2 Studio | Latest | GPU weather forecasting |
+| **Weather AI (Framework)** | Earth2Studio | Latest | Python framework for orchestrating Earth-2 AI weather models |
+| **Weather AI (Model)** | Earth-2 Atlas (Medium Range) | Latest | Primary 15-day global forecast, 70+ variables, ~25km, GPU 2 |
+| **Weather AI (Model)** | FourCastNet (FCN3) | Latest | Fallback forecast model (SFNO architecture) |
+| **Weather AI (Data)** | GFS (via `earth2studio.data.GFS`) | Latest | Real-time global initial conditions for forecast models |
+| **Weather AI (Future)** | CorrDiff | Latest | Downscaling 25km→2km — no Vietnam model yet |
+| **Weather AI (Future)** | StormScope (Nowcasting) | Latest | 0-6hr nowcasting — US coverage only (GOES satellite) |
 | **Optimization** | NVIDIA cuOpt | Latest | Route optimization (VRP) |
 | **Safety** | NeMo Guardrails | 0.10+ | Input/output validation |
 | **Vector DB** | Milvus | 2.4+ | Vector similarity search |
@@ -1025,8 +1157,8 @@ graph LR
     end
 
     subgraph "GPU 2-3: Weather AI (282 GB)"
-        G2["GPU 2: Earth-2 Medium Range<br/>15-day forecast model<br/>~60 GB VRAM"]
-        G3["GPU 3: Earth-2 StormScope<br/>Nowcasting 0-6hr<br/>~40 GB VRAM"]
+        G2["GPU 2: Earth-2 Atlas<br/>Medium Range 15-day<br/>via Earth2Studio + GFS<br/>~60 GB VRAM"]
+        G3["GPU 3: Reserve / Ensemble<br/>FourCastNet fallback<br/>or Atlas ensemble runs<br/>~60 GB VRAM"]
     end
 
     subgraph "GPU 4-5: RAG Models (282 GB)"
@@ -1054,7 +1186,7 @@ graph LR
 | GPU Pair | Service | VRAM Used | VRAM Free | CPU RAM | NVMe |
 |----------|---------|-----------|-----------|---------|------|
 | GPU 0-1 | NIM LLM (Nemotron Nano 8B → 49B) | ~200 GB | ~82 GB | 256 GB | 4 TB (model cache) |
-| GPU 2-3 | Earth-2 Studio | ~100 GB | ~182 GB | 256 GB | 4 TB (weather data) |
+| GPU 2-3 | Earth2Studio + Atlas (GPU 2) + Reserve/Ensemble (GPU 3) | ~100 GB | ~182 GB | 256 GB | 4 TB (weather data: GFS, ERA5) |
 | GPU 4-5 | NV-Embed + NV-Rerank | ~18 GB | ~264 GB | 128 GB | 2 TB (vector index) |
 | GPU 6-7 | cuOpt + Llama fallback | ~160 GB | ~122 GB | 256 GB | 4 TB (OSM data) |
 | **Total** | | **~478 GB** | **~650 GB** | **~2 TB** | **~28 TB** |
@@ -1121,7 +1253,7 @@ graph LR
 | 📊 **Budget Estimate** | Estimated cost breakdown for activities, food, transport | Summary table |
 | 📸 **Plan Export** | Beautiful PNG image of itinerary + QR code to reopen on web | Download button |
 | 🔔 **Real-Time SMS Alerts** | Weather change notification 30 min before outdoor activities (opt-in, VN phone) | SMS message |
-| ⚡ **Live Re-Planning** | Auto-suggested indoor alternatives when weather turns bad — powered by Earth-2 StormScope real-time nowcasting on 8×H200 cluster | WebSocket push + SMS |
+| ⚡ **Live Re-Planning** | Auto-suggested indoor alternatives when weather turns bad — powered by Open-Meteo real-time monitoring (every 10 min) + Earth-2 Atlas 15-day forecast on 8×H200 cluster | WebSocket push + SMS |
 
 ### Example Interaction
 
@@ -1315,7 +1447,7 @@ graph TB
 
     subgraph "AI Layer (GPU Containers)"
         VLLM[NIM LLM Server<br/>Port 8000<br/>GPU 0-1]
-        E2[Earth-2 Studio<br/>Port 8081<br/>GPU 2-3]
+        E2[Earth2Studio + Atlas<br/>Python Library on GPU 2<br/>Not a container service]
         EMB[Embedding Server<br/>Port 8082<br/>GPU 4-5]
         CUOPT[cuOpt Server<br/>Port 8083<br/>GPU 6-7]
     end
@@ -1393,8 +1525,12 @@ docker run -d --name cuopt \
   -p 8083:5000 \
   nvcr.io/nvidia/cuopt:latest
 
-# 5. Earth-2 — GPU 2-3 (runs in JupyterLab Python, not container)
-# pip install earth2studio  # inside JupyterLab
+# 5. Earth-2 — GPU 2-3 (runs via Earth2Studio Python library, not NIM container)
+#    Earth2Studio is a framework — install it and run models (Atlas, FourCastNet) directly.
+#    GFS initial conditions are auto-fetched by earth2studio.data.GFS
+pip install earth2studio  # inside JupyterLab or Docker Python env
+# Models (Atlas/FCN3) are downloaded automatically on first use from NGC/HuggingFace
+# Verify: python -c "from earth2studio.models.px import FCN3; print('Earth2Studio OK')"
 ```
 
 #### Non-GPU Services (Docker Compose)
@@ -1628,9 +1764,9 @@ gantt
 
 | Time | Member A | Member B | Member C | Member D |
 |------|----------|----------|----------|----------|
-| AM | Orchestrator intent parser + routing | Earth-2 Studio setup on GPU 2-3 | Chunking pipeline + NV-Embed-v2 | Gradio → map integration (Folium) |
+| AM | Orchestrator intent parser + routing | Earth2Studio + Atlas setup on GPU 2, GFS data test | Chunking pipeline + NV-Embed-v2 | Gradio → map integration (Folium) |
 | PM | Weather Agent + Attraction Agent nodes | cuOpt deployment on GPU 6-7 | Milvus setup + document insertion | Weather card component |
-| EOD | ✅ 2 agents in graph | ✅ Earth-2 + cuOpt running | ✅ Vector DB loaded, search works | ✅ Chat + weather cards |
+| EOD | ✅ 2 agents in graph | ✅ Earth2Studio + Atlas + cuOpt running | ✅ Vector DB loaded, search works | ✅ Chat + weather cards |
 
 #### Day 3 (Jun 8) — Full Pipeline 🔗
 
@@ -1669,7 +1805,10 @@ gantt
 
 | Risk | Probability | Mitigation |
 |------|-------------|------------|
-| Earth-2 setup fails | Medium | Fallback: OpenWeatherMap API only |
+| Earth-2 Atlas setup fails | Medium | Fallback: FourCastNet (FCN3) via Earth2Studio, then OpenWeatherMap + Open-Meteo APIs |
+| StormScope unavailable for Vietnam | **Known** | **Already mitigated:** Using Open-Meteo `minutely_15` as primary real-time source (global coverage) |
+| CorrDiff no Vietnam model | **Known** | **Already mitigated:** Using Atlas ~25km output + Open-Meteo hourly for local detail |
+| GFS data fetch fails | Low | Fallback: ERA5 via `earth2studio.data.ARCO` or IFS data source |
 | cuOpt license issue | Low | Fallback: Valhalla + greedy optimizer |
 | LLM too slow | Medium | Switch to Llama 3.1 8B or quantized model |
 | Milvus OOM | Low | Use Milvus Lite (SQLite backend) |
@@ -1804,11 +1943,11 @@ graph TB
 
 | Feature | Weatherise | Traditional Travel Apps | Generic Chatbots |
 |---------|-----------|------------------------|-------------------|
-| Weather-aware planning | ✅ Earth-2 AI forecasts | ❌ Static weather widget | ❌ No weather integration |
+| Weather-aware planning | ✅ Earth-2 Atlas AI forecasts (15-day, 70+ vars) via Earth2Studio | ❌ Static weather widget | ❌ No weather integration |
 | GPU-optimized routing | ✅ cuOpt (120x faster) | ❌ Basic directions | ❌ No routing |
-| Multi-agent reasoning | ✅ 7 specialized agents | ❌ Monolithic logic | ⚠️ Single LLM call |
+| Multi-agent reasoning | ✅ 8 specialized agents | ❌ Monolithic logic | ⚠️ Single LLM call |
 | Local knowledge (RAG) | ✅ 3,000+ curated docs | ⚠️ Generic reviews | ❌ Hallucinations |
-| **Real-time re-planning** | ✅ StormScope nowcast → SMS alert → auto re-plan | ❌ Manual checking | ❌ No adaptation |
+| **Real-time re-planning** | ✅ Open-Meteo monitoring + Earth-2 Atlas forecast → SMS alert → auto re-plan | ❌ Manual checking | ❌ No adaptation |
 | **Plan export + QR** | ✅ Beautiful image + QR code | ❌ Screenshot only | ❌ Text only |
 | Domain reusable | ✅ Plug-and-play layers | ❌ Travel-only | ❌ No structure |
 | Self-hosted (privacy) | ✅ On-premise 8×H200 cluster | ❌ Cloud-dependent | ❌ API-dependent |
@@ -1817,15 +1956,16 @@ graph TB
 ### Persuasion Points for Judges
 
 1. **Real Problem, Real Data** — Da Nang has 19.5M visitors/year but NO intelligent weather-aware travel planner
-2. **Full NVIDIA Stack** — Earth-2 + StormScope + cuOpt + NIM + NeMo = maximum utilization of 8×H200 cluster
-3. **Not Just a Chatbot** — 7 specialized agents (including 2 real-time background agents) with GPU-accelerated optimization
-4. **Truly Real-Time** — Earth-2 StormScope runs nowcasting every 10 min on GPU → proactive SMS alerts 30 min before weather affects outdoor plans
-5. **Reusable Framework** — Same architecture serves agriculture, logistics, healthcare — proven by NVIDIA's own warehouse blueprint
-6. **Production-Ready** — Docker Compose deployment, Prometheus monitoring, NeMo Guardrails safety
-7. **Plan Export** — Beautiful itinerary image + QR code for offline access — shareable on social media
-8. **Cost Efficiency** — Self-hosted = $0/query vs. $0.03-0.10 on cloud APIs. SMS alerts at ~350 VND/msg
-9. **Vietnamese Market** — Bilingual (EN/VI), local knowledge, Vietnamese SMS support, culturally-aware recommendations
-10. **Measurable Impact** — Reduces trip planning from hours to seconds, prevents weather-ruined experiences proactively
+2. **Full NVIDIA Stack** — Earth-2 Atlas (via Earth2Studio) + cuOpt + NIM + NeMo Guardrails = maximum utilization of 8×H200 cluster
+3. **Not Just a Chatbot** — 8 specialized agents (including 2 real-time background agents) with GPU-accelerated optimization
+4. **Truly Real-Time** — Open-Meteo `minutely_15` monitoring every 10 min + Earth-2 Atlas GPU forecast → proactive SMS alerts 30 min before weather affects outdoor plans
+5. **Earth-2 Deep Integration** — Earth2Studio framework orchestrates GFS initial conditions → Atlas model inference → 15-day, 70+ variable, ~25km global forecast on GPU 2 (architecture ready for CorrDiff downscaling and StormScope nowcasting when Vietnam regional models become available)
+6. **Reusable Framework** — Same architecture serves agriculture, logistics, healthcare — proven by NVIDIA's own warehouse blueprint
+7. **Production-Ready** — Docker Compose deployment, Prometheus monitoring, NeMo Guardrails safety
+8. **Plan Export** — Beautiful itinerary image + QR code for offline access — shareable on social media
+9. **Cost Efficiency** — Self-hosted = $0/query vs. $0.03-0.10 on cloud APIs. SMS alerts at ~350 VND/msg
+10. **Vietnamese Market** — Bilingual (EN/VI), local knowledge, Vietnamese SMS support, culturally-aware recommendations
+11. **Measurable Impact** — Reduces trip planning from hours to seconds, prevents weather-ruined experiences proactively
 
 ---
 
