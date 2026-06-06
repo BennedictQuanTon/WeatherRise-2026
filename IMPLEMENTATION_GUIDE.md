@@ -322,10 +322,14 @@ docker run -d --name postgres \
 
 # Milvus Standalone (vector DB)
 docker run -d --name milvus \
-  -p 19530:19530 -p 9091:9091 \
+  -p 19530:19530 \
+  -p 9091:9091 \
   -v /raid/team/weatherise/data/milvus:/var/lib/milvus \
+  --security-opt seccomp:unconfined \
   -e ETCD_USE_EMBED=true \
+  -e ETCD_DATA_DIR=/var/lib/milvus/etcd \
   -e COMMON_STORAGETYPE=local \
+  -e DEPLOY_MODE=STANDALONE \
   milvusdb/milvus:latest milvus run standalone
 
 # Verify all running
@@ -388,18 +392,18 @@ echo "=== Done ==="
 
 ### ✅ Phase 1 Checklist
 
-- [ ] SSH into cluster, all 8 GPUs visible
-- [ ] Directory structure created at `/raid/team/weatherise/`
-- [ ] Code uploaded from laptop
-- [ ] `.env` file uploaded
+- [x] SSH into cluster, all 8 GPUs visible
+- [x] Directory structure created at `/raid/team/test/weatherise/`
+- [x] Code uploaded from laptop
+- [x] `.env` file uploaded
 - [ ] NIM LLM running on GPU 0-1 (port 8000) → tested with curl
 - [ ] NIM Embedding running on GPU 4 (port 8001) → tested with curl
 - [ ] NIM Reranker running on GPU 5 (port 8002) → tested
 - [ ] cuOpt running on GPU 6 (port 8083) → tested
 - [ ] Earth-2 Studio installed + StormScope model downloaded
-- [ ] Redis running (port 6379) → PING=PONG
-- [ ] Milvus running (port 19530) → healthz OK
-- [ ] PostgreSQL running (port 5432) → pg_isready OK
+- [x] Redis running (port 6379) → PING=PONG
+- [x] Milvus running (port 19530) → healthz OK
+- [x] PostgreSQL running (port 5432) → pg_isready OK
 - [ ] `healthcheck.sh` passes ALL services ✅
 
 ---
