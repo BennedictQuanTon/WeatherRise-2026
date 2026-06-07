@@ -120,10 +120,61 @@ graph LR
 
 ---
 ## 🏗️ System Architecture
-
 ### High-Level Architecture
-![alt text](architecture.png)
-### Sequence Diagram
-![alt text](sequencediagram.png)
-### Tech Stack 
-![alt text](techstack.png)
+![alt text](diagram/image.png)
+### Tech Stack
+#### 🖥️ Frontend
+* **Gradio:** MVP Chat UI
+* **Next.js 14:** PWA Polish
+* **Leaflet.js:** Maps
+* **Recharts:** Weather Charts
+
+#### ⚡ Backend
+* **FastAPI:** API Gateway
+* **WebSocket:** Streaming
+* **Celery:** Task Queue
+
+#### 🤖 AI / Agent Layer
+* **LangGraph:** Orchestration
+* **LangChain:** Agent Tools
+* **NIM:** LLM Serving
+* **NeMo Guardrails:** Safety
+* **APScheduler:** Weather Watcher
+
+#### 🧠 Models
+* **LLM Models (via NIM):** 
+  * Nemotron-3 Super 49B
+  * Llama 3.1 70B Instruct
+* **Embedding & Reranker:** 
+  * NV-Embed-v2
+  * NV-Rerank-Mistral-4B
+* **Weather Foundation Models:** 
+  * Earth-2 Atlas (Medium Range 15-day Forecast)
+  * Earth-2 FourCastNet (Fallback)
+* **High Resolution / Nowcasting (Future):** 
+  * Earth-2 CorrDiff (Downscaling)
+  * Earth-2 StormScope (Nowcasting)
+
+#### 🗄️ Database / Storage
+* **Milvus:** Vectors
+* **PostgreSQL:** Structured
+* **Redis:** Cache + Sessions
+
+#### 🛠️ Infrastructure
+* **Docker + Docker Compose**
+* **Nginx:** Reverse Proxy
+* **Prometheus + Grafana:** Monitoring
+* **JupyterLab:** Dev Environment
+
+#### 🟩 NVIDIA Stack
+* **cuOpt:** Route Optimization
+* **Earth2Studio:** Weather Framework
+* **GFS:** Initial Conditions
+* **NIM:** Containers
+* **NeMo:** Toolkit
+
+#### 📲 Notification + Export
+* **SpeedSMS:** Vietnam SMS
+* **Open-Meteo:** Free Weather
+* **Playwright:** Plan Image
+* **qrcode:** QR Generator
