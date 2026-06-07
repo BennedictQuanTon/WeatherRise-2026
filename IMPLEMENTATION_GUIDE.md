@@ -400,7 +400,7 @@ echo "=== Done ==="
 - [x] NIM Embedding running on GPU 4 (port 8002) → tested with curl
 - [x] NIM Reranker running on GPU 5 (port 8003) → tested
 - [x] cuOpt running on GPU 6 (port 8084) → tested
-- [ ] Earth-2 Studio installed + StormScope model downloaded
+- [x] Earth-2 Studio installed + StormScope model downloaded
 - [x] Redis running (port 6379) → PING=PONG
 - [x] Milvus running (port 19530) → healthz OK
 - [x] PostgreSQL running (port 5432) → pg_isready OK
