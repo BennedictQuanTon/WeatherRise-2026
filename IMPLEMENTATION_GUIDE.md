@@ -441,24 +441,24 @@ echo "=== Done ==="
 ## ✅ Master Checklist
 
 ### Pre-Hackathon
-- [ ] NGC API Key received from VTS
-- [ ] OpenWeatherMap API key registered
+- [x] NGC API Key received from VTS
+- [] OpenWeatherMap API key registered
 - [ ] SpeedSMS account + token registered
 - [ ] Google Places API key registered
 - [ ] HuggingFace token registered
-- [ ] Code skeleton pre-written on laptop
-- [ ] `.env` file prepared
+- [x] Code skeleton pre-written on laptop
+- [x] `.env` file prepared
 - [ ] Da Nang data pre-scraped (TripAdvisor, Wikivoyage, blogs)
 
 ### Phase 1: Cluster Setup (Day 1 AM)
-- [ ] Cluster access verified (SSH + JupyterLab)
-- [ ] All 8 GPUs visible
-- [ ] NIM LLM on GPU 0-1 ✅
-- [ ] NIM Embed on GPU 4 ✅
-- [ ] NIM Rerank on GPU 5 ✅
-- [ ] cuOpt on GPU 6 ✅
-- [ ] Earth-2 on GPU 2-3 ✅
-- [ ] Redis + Milvus + PostgreSQL ✅
+- [x] Cluster access verified (SSH + JupyterLab)
+- [x] All 8 GPUs visible
+- [x] NIM LLM on GPU 0-1 ✅
+- [x] NIM Embed on GPU 4 ✅
+- [x] NIM Rerank on GPU 5 ✅
+- [x] cuOpt on GPU 6 ✅
+- [x] Earth-2 on GPU 2-3 ✅
+- [x] Redis + Milvus + PostgreSQL ✅
 
 ### Phase 2: Data & RAG (Day 1 PM — Day 2)
 - [ ] Raw data uploaded to cluster
