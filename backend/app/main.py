@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from .utils.redis import redis_manager
+from .routers.destination import router as destination_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,3 +30,5 @@ async def health_check():
         return {"status": "healthy", "redis": "connected", "message": "All systems operational"}
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Redis connection failed: {e}")
+    
+app.include_router(destination_router)
