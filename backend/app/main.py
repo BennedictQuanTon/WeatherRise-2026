@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from .utils.redis import redis_manager
+from .configs.db_config import init_db
 from .routers.destination import router as destination_router
 
 @asynccontextmanager
@@ -15,7 +16,10 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[CRITICAL] Redis handshake aborted: {e}")
         raise e
-        
+
+    # Initialize the database
+    await init_db()
+    
     yield
     
     # 2. Shutdown phase: Safely flush and release socket pools
