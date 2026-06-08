@@ -259,7 +259,7 @@ docker run -d --name nim-rerank \
   -e NGC_API_KEY \
   -v /raid/nim-cache:/opt/nim/.cache \
   -p 8003:8000 \
-  nvcr.io/nim/nvidia/nv-rerankqa-mistral-4b-v3:latest
+  nvcr.io/nim/nvidia/nv-rerankqa-mistral-4b-v3:1.0.2
 
 # Test
 docker logs -f nim-rerank
