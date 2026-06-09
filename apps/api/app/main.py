@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from apps.api.app.routes.health import router as health_router
 from apps.api.app.routes.chat import router as chat_router
 from apps.api.app.routes.websocket import router as ws_router
+from apps.api.app.routes.monitor import router as monitor_router
 
 
 @asynccontextmanager
@@ -33,3 +34,4 @@ app.add_middleware(
 app.include_router(health_router, tags=["Health"])
 app.include_router(chat_router, prefix="/api", tags=["Chat"])
 app.include_router(ws_router, tags=["WebSocket"])
+app.include_router(monitor_router, tags=["Monitor"])
