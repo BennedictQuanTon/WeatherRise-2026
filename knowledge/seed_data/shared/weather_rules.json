@@ -1,0 +1,66 @@
+[
+  {
+    "id": "weather_rule_rain_tourism_001",
+    "domain": "tourism",
+    "topic": "rain_risk_outdoor",
+    "content": "Tourism rain risk rules: Rain probability below 30% — safe for all outdoor activities including beaches, hiking, sightseeing. 30–60% — carry rain gear, avoid open-air events, consider indoor backup. Above 60% — reschedule outdoor activities, prefer covered attractions (museums, malls). Heavy rain (>10mm/h) — unsafe for motorcycles, coastal areas.",
+    "keywords": ["rain", "outdoor", "beach", "tourist", "sightseeing", "risk", "mưa", "du lịch"],
+    "language": "en"
+  },
+  {
+    "id": "weather_rule_heat_tourism_001",
+    "domain": "tourism",
+    "topic": "heat_risk_outdoor",
+    "content": "Heat risk for tourists: Below 33°C — comfortable for all activities. 33–37°C — high heat, schedule outdoor activities before 10 AM and after 4 PM. Drink 2L water/hour during activities. Above 37°C — extreme heat risk, avoid prolonged sun exposure, prioritize shaded or air-conditioned venues. UV index above 8 requires SPF 50+ sunscreen.",
+    "keywords": ["heat", "temperature", "hot", "UV", "sun", "nóng", "nhiệt độ", "du lịch biển"],
+    "language": "en"
+  },
+  {
+    "id": "weather_rule_wind_beach_001",
+    "domain": "tourism",
+    "topic": "wind_beach_safety",
+    "content": "Beach and water safety wind rules: Wind below 20 km/h — safe for swimming, kayaking, snorkeling. 20–35 km/h — caution for water sports, waves 0.5–1.5m. 35–50 km/h — avoid sea activities, strong waves. Above 50 km/h — beach closure recommended, storm risk. Da Nang beaches (My Khe, Non Nuoc) face East — monitor eastern wind direction.",
+    "keywords": ["wind", "beach", "swimming", "waves", "water sports", "gió", "bãi biển", "my khe"],
+    "language": "en"
+  },
+  {
+    "id": "weather_rule_concrete_001",
+    "domain": "construction",
+    "topic": "concrete_pouring_rules",
+    "content": "Concrete pouring weather requirements: Temperature must be 10–35°C for proper curing. Rain probability must be below 20% for 24 hours after pour. Humidity should be 40–80% — too low causes rapid drying and cracking. Wind above 30 km/h increases evaporation, requires curing blankets. Avoid pouring if rain forecast within 4 hours.",
+    "keywords": ["concrete", "pouring", "curing", "bê tông", "đổ bê tông", "construction", "xây dựng"],
+    "language": "en"
+  },
+  {
+    "id": "weather_rule_crane_001",
+    "domain": "construction",
+    "topic": "crane_operation_rules",
+    "content": "Crane operation weather safety: Wind speed must be below 45 km/h for tower cranes (per TCVN standards). Crane operations must halt when wind gusts exceed 60 km/h. Visibility below 500m (dense fog or heavy rain) — ground all cranes. After typhoon or storm, inspect crane foundations before resuming. Lightning within 10km radius — stop all crane operations immediately.",
+    "keywords": ["crane", "cần cẩu", "wind", "gió", "lifting", "tower crane", "safety", "an toàn"],
+    "language": "en"
+  },
+  {
+    "id": "weather_rule_storm_001",
+    "domain": "construction",
+    "topic": "typhoon_construction_protocol",
+    "content": "Typhoon and tropical storm construction protocols: Tropical storm warning (cấp 6–7) — secure all loose materials, reduce scaffolding loads. Typhoon category 1 (cấp 8–9) — halt all outdoor work, evacuate personnel. Category 2+ — full site shutdown, anchor cranes, waterproof electrical systems. Post-storm: structural inspection required before resuming operations.",
+    "keywords": ["typhoon", "tropical storm", "bão", "storm", "category", "shutdown", "protocol"],
+    "language": "en"
+  },
+  {
+    "id": "weather_rule_danang_seasons_001",
+    "domain": "tourism",
+    "topic": "danang_weather_seasons",
+    "content": "Da Nang seasonal weather guide: Best season — February to May: dry, 25–30°C, low rain. Good season — June to August: hot 32–35°C, occasional afternoon rain, good for beach. Rainy season — October to December: heavy rain, flooding risk, limited outdoor activities. Avoid — September to November: typhoon season. Han Market, Dragon Bridge, Marble Mountains are indoor-accessible year-round.",
+    "keywords": ["da nang", "đà nẵng", "seasons", "best time", "weather", "monthly", "tourism guide"],
+    "language": "en"
+  },
+  {
+    "id": "poi_hanmarket_001",
+    "domain": "tourism",
+    "topic": "poi_info",
+    "content": "Han Market (Chợ Hàn) Da Nang: Located in the city center, 119 Tran Phu Street. Open daily 6 AM – 9 PM. Indoor covered market — suitable during rain. Famous for local seafood, fresh produce, Vietnamese souvenirs, silk. Walking distance from Da Nang beach and Dragon Bridge. Not affected by moderate rain. Crowded mornings 7–10 AM.",
+    "keywords": ["han market", "chợ hàn", "da nang", "indoor", "market", "souvenir", "seafood", "rain"],
+    "language": "en"
+  }
+]
