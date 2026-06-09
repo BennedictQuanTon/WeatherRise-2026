@@ -39,7 +39,7 @@ async def health_check():
     # Check Qdrant
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
-            r = await client.get(f"{settings.qdrant_url}/health")
+            r = await client.get(f"{settings.qdrant_url}/collections")
             checks["qdrant"] = "ok" if r.status_code == 200 else "degraded"
     except Exception:
         checks["qdrant"] = "unreachable"

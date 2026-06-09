@@ -57,10 +57,14 @@ class LLMParser:
 
         except Exception as e:
             print(f"[Parser] Error: {e}")
-            # Graceful fallback
+            # Graceful fallback — must have non-None intent
             return ParserOutput(
                 domain="unknown",
-                intent="unknown",
+                intent="general_query",
                 location=None,
+                geographical_location=GeographicalLocation(),
+                time_range=TimeRange(),
+                involved_context=[],
+                user_constraints=[],
                 raw_user_input=raw_input,
             )
