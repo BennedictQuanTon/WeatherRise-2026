@@ -1,0 +1,60 @@
+{
+  "source": "mock_canonical_weather",
+  "source_type": "mock_forecast",
+  "location": {
+    "name": "Da Nang",
+    "latitude": 16.0544,
+    "longitude": 108.2022,
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "forecast_window": {
+    "start": "2026-06-15",
+    "end": "2026-06-17"
+  },
+  "resolution": {
+    "temporal": "hourly",
+    "spatial": "city_level"
+  },
+  "variables": [
+    {
+      "time": "2026-06-15T09:00:00+07:00",
+      "temperature_c": 32.0,
+      "rain_probability": 15,
+      "precipitation_mm": 0.0,
+      "wind_speed_kmh": 12,
+      "wind_gust_kmh": 18,
+      "humidity_percent": 70,
+      "weather_code": 1,
+      "storm_risk": "low"
+    },
+    {
+      "time": "2026-06-15T13:00:00+07:00",
+      "temperature_c": 38.5,
+      "rain_probability": 20,
+      "precipitation_mm": 0.0,
+      "wind_speed_kmh": 16,
+      "wind_gust_kmh": 20,
+      "humidity_percent": 66,
+      "weather_code": 1,
+      "storm_risk": "low"
+    },
+    {
+      "time": "2026-06-15T15:00:00+07:00",
+      "temperature_c": 39.2,
+      "rain_probability": 22,
+      "precipitation_mm": 0.0,
+      "wind_speed_kmh": 14,
+      "wind_gust_kmh": 21,
+      "humidity_percent": 64,
+      "weather_code": 1,
+      "storm_risk": "low"
+    }
+  ],
+  "data_quality": {
+    "missing_fields": [],
+    "confidence": "high",
+    "notes": [
+      "Mock heat-risk case for model benchmarking."
+    ]
+  }
+}

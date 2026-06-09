@@ -1,0 +1,49 @@
+{
+  "source": "mock_canonical_weather",
+  "source_type": "mock_forecast",
+  "location": {
+    "name": "Da Nang",
+    "latitude": 16.0544,
+    "longitude": 108.2022,
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "forecast_window": {
+    "start": "2026-06-15",
+    "end": "2026-06-17"
+  },
+  "resolution": {
+    "temporal": "hourly",
+    "spatial": "city_level"
+  },
+  "variables": [
+    {
+      "time": "2026-06-15T09:00:00+07:00",
+      "temperature_c": 29.0,
+      "rain_probability": 10,
+      "precipitation_mm": 0.0,
+      "wind_speed_kmh": 10,
+      "wind_gust_kmh": 16,
+      "humidity_percent": 65,
+      "weather_code": 1,
+      "storm_risk": "low"
+    },
+    {
+      "time": "2026-06-15T14:00:00+07:00",
+      "temperature_c": 32.0,
+      "rain_probability": 20,
+      "precipitation_mm": 0.0,
+      "wind_speed_kmh": 18,
+      "wind_gust_kmh": 25,
+      "humidity_percent": 68,
+      "weather_code": 2,
+      "storm_risk": "low"
+    }
+  ],
+  "data_quality": {
+    "missing_fields": [],
+    "confidence": "high",
+    "notes": [
+      "Mock good-weather case for model benchmarking."
+    ]
+  }
+}

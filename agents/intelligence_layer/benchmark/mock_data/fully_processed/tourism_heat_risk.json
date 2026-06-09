@@ -1,0 +1,44 @@
+{
+  "domain": "tourism",
+  "intent": "travel_planning",
+  "location": "Da Nang",
+  "geographical_location": {
+    "country": "Vietnam",
+    "city": "Da Nang",
+    "coordinates": {
+      "latitude": 16.0544,
+      "longitude": 108.2022
+    }
+  },
+  "time_range": {
+    "raw_text": "next 3 days",
+    "start": "2026-06-15",
+    "end": "2026-06-17",
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "involved_context": [
+    "weather_forecast",
+    "tourist_attractions",
+    "indoor_outdoor_classification",
+    "backup_plan_options"
+  ],
+  "knowledge_context": {
+    "tourist_attractions": "My Khe Beach and Son Tra are outdoor. Han Market and Cham Museum are indoor backups."
+  },
+  "mcp_context": {},
+  "intelligence_requirements": {
+    "realtime_weather_needed": false,
+    "weather_variables": [
+      "rain_probability",
+      "temperature",
+      "wind_speed",
+      "humidity"
+    ],
+    "reasoning_task": "generate_weather_aware_travel_advice"
+  },
+  "user_constraints": [
+    "avoid extreme heat",
+    "prefer morning outdoor activities"
+  ],
+  "raw_user_input": "Plan an outdoor sightseeing day in Da Nang but avoid extreme heat."
+}

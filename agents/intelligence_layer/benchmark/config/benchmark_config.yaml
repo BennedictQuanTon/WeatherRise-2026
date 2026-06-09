@@ -1,0 +1,12 @@
+benchmark:
+  output_dir: "outputs/path_a_runs"
+  require_valid_json: true
+  required_output_fields:
+    - prediction
+    - recommendation
+    - explanation
+    - final_answer
+  preserve_prediction_engine_risk: true
+  default_model_key: "nemotron_nano_8b"
+  save_raw_outputs: true
+  save_human_review_markdown: true

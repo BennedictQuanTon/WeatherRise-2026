@@ -1,0 +1,30 @@
+models:
+  nemotron_nano_8b:
+    display_name: "Llama 3.1 Nemotron Nano 8B v1"
+    provider: "nvidia_nim"
+    base_url: "http://localhost:8001/v1"
+    model: "nvidia/llama-3.1-nemotron-nano-8b-v1"
+    temperature: 0.2
+    max_tokens: 2048
+    timeout_seconds: 60
+    enabled: true
+
+  nemotron_3_super_120b_a12b:
+    display_name: "Nemotron 3 Super 120B-A12B"
+    provider: "nvidia_nim"
+    base_url: "http://localhost:8001/v1"
+    model: "nemotron-3-super"
+    temperature: 0.2
+    max_tokens: 2048
+    timeout_seconds: 90
+    enabled: false
+
+  nemotron_49b_super:
+    display_name: "Llama 3.3 Nemotron Super 49B"
+    provider: "nvidia_nim"
+    base_url: "http://localhost:8001/v1"
+    model: "llama-3.3-nemotron-super-49b"
+    temperature: 0.2
+    max_tokens: 2048
+    timeout_seconds: 90
+    enabled: false

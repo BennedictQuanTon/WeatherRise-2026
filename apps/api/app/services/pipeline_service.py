@@ -44,7 +44,8 @@ async def run_pipeline(raw_input: str, session_id: str) -> Dict[str, Any]:
     emit("step", "Intelligence", "NIM reasoning with weather data + risk scoring...")
     result = await _intelligence.reason(processed)
     ms = round((time.time() - t) * 1000)
-    emit("success", "Intelligence", f"overall_risk={result.risk_assessment.overall_risk} | {result.prediction[:60]}", ms)
+    risk_summary = ", ".join(f"{k}={v}" for k, v in result.risk_assessment.items())
+    emit("success", "Intelligence", f"{risk_summary} | {result.prediction[:60]}", ms)
 
     total_ms = round((time.time() - pipeline_start) * 1000)
     emit("success", "Pipeline", f"✅ Complete in {total_ms}ms | domain={processed.domain} | loc={processed.location}", total_ms)
@@ -54,9 +55,10 @@ async def run_pipeline(raw_input: str, session_id: str) -> Dict[str, Any]:
         "location": processed.location,
         "prediction": result.prediction,
         "recommendation": result.recommendation,
-        "risk_assessment": result.risk_assessment.model_dump(),
+        "risk_assessment": {k: v.value if hasattr(v, 'value') else v for k, v in result.risk_assessment.items()},
         "explanation": result.explanation,
         "final_answer": result.final_answer,
+        "metadata": result.metadata,
     }
 
 
@@ -92,7 +94,8 @@ async def run_pipeline_streaming(
     emit("step", "Intelligence", "NIM reasoning...")
     result = await _intelligence.reason(processed)
     ms = round((time.time() - t) * 1000)
-    emit("success", "Intelligence", f"risk={result.risk_assessment.overall_risk}", ms)
+    risk_summary = ", ".join(f"{k}={v}" for k, v in result.risk_assessment.items())
+    emit("success", "Intelligence", f"risk={risk_summary}", ms)
 
     total_ms = round((time.time() - pipeline_start) * 1000)
     emit("success", "Pipeline", f"✅ WS complete in {total_ms}ms", total_ms)
@@ -104,8 +107,9 @@ async def run_pipeline_streaming(
             "location": processed.location,
             "prediction": result.prediction,
             "recommendation": result.recommendation,
-            "risk_assessment": result.risk_assessment.model_dump(),
+            "risk_assessment": {k: v.value if hasattr(v, 'value') else v for k, v in result.risk_assessment.items()},
             "explanation": result.explanation,
             "final_answer": result.final_answer,
+            "metadata": result.metadata,
         }
     }

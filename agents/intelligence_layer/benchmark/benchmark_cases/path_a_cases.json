@@ -1,0 +1,62 @@
+[
+  {
+    "case_id": "tourism_high_rain_001",
+    "description": "Da Nang trip planning with high rain risk.",
+    "domain": "tourism",
+    "fully_processed_json_path": "mock_data/fully_processed/tourism_high_rain.json",
+    "canonical_weather_json_path": "mock_data/canonical_weather/tourism_high_rain_weather.json",
+    "expected_behavior": {
+      "must_preserve_risks": true,
+      "must_mention": [
+        "rain",
+        "indoor",
+        "backup"
+      ],
+      "must_not_invent": [
+        "typhoon warning",
+        "flood warning",
+        "official storm warning"
+      ]
+    }
+  },
+  {
+    "case_id": "tourism_heat_risk_001",
+    "description": "Da Nang outdoor plan with high heat risk.",
+    "domain": "tourism",
+    "fully_processed_json_path": "mock_data/fully_processed/tourism_heat_risk.json",
+    "canonical_weather_json_path": "mock_data/canonical_weather/tourism_heat_risk_weather.json",
+    "expected_behavior": {
+      "must_preserve_risks": true,
+      "must_mention": [
+        "heat",
+        "morning",
+        "avoid afternoon"
+      ],
+      "must_not_invent": [
+        "heavy rain",
+        "storm warning",
+        "flood"
+      ]
+    }
+  },
+  {
+    "case_id": "tourism_good_weather_001",
+    "description": "Da Nang good outdoor weather case.",
+    "domain": "tourism",
+    "fully_processed_json_path": "mock_data/fully_processed/tourism_good_weather.json",
+    "canonical_weather_json_path": "mock_data/canonical_weather/tourism_good_weather_weather.json",
+    "expected_behavior": {
+      "must_preserve_risks": true,
+      "must_mention": [
+        "outdoor",
+        "suitable",
+        "low risk"
+      ],
+      "must_not_invent": [
+        "heavy rain",
+        "typhoon",
+        "dangerous wind"
+      ]
+    }
+  }
+]

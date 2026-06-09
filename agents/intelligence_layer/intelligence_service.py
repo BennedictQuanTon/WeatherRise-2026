@@ -1,136 +1,236 @@
 """
-Intelligence Service
-Receives a FullyProcessedPayload and produces the final weather-aware advice using:
-  1. Rule-based risk scoring (prediction_engine)
-  2. NVIDIA NIM LLM for natural language explanation and recommendation
+Intelligence Service — Orchestrates the full Path A pipeline.
+
+Flow:
+  1. Validate input
+  2. Fetch weather from Open-Meteo (Intelligence Layer owns weather fetching)
+  3. Normalize into Canonical Weather JSON
+  4. Run Prediction Engine (deterministic risk scoring)
+  5. Build NIM prompt
+  6. Call NIM LLM
+  7. Build final response
+
+Error handling:
+  - Weather fetch fails → empty canonical (prediction defaults to "medium")
+  - NIM call fails → response_builder uses prediction engine fallback text
+  - Never crashes the pipeline
 """
-import json
-from agents.intelligence_layer.nim_client import NIMClient
-from agents.intelligence_layer.prediction_engine import PredictionEngine
-from apps.api.app.schemas.context_schema import FullyProcessedPayload
-from apps.api.app.schemas.intelligence_schema import IntelligenceOutput, RiskAssessment
 
-INTELLIGENCE_SYSTEM_PROMPT = """You are Weatherise, an expert weather-risk intelligence system.
-You receive structured JSON with weather data, domain context, and user constraints.
-Your job is to produce a clear, helpful, and accurate weather-risk analysis.
+import traceback
+from typing import Any
 
-RULES:
-1. Be specific with times, dates, and weather values when available.
-2. Always acknowledge the user's constraints (e.g., "you want to avoid heavy rain").
-3. Give concrete recommendations (e.g., "visit Ba Na Hills in the morning", not "plan carefully").
-4. Use the risk assessment provided. Do NOT make up weather data.
-5. Keep the final_answer concise and user-friendly (3-5 sentences).
-6. Speak directly to the user. Use "you" and "your".
-
-OUTPUT FORMAT (valid JSON only):
-{
-  "prediction": "<1-2 sentence weather prediction>",
-  "recommendation": "<concrete action recommendation>",
-  "explanation": "<brief explanation of why this advice is given>",
-  "final_answer": "<concise, user-friendly summary answer>"
-}"""
+from .schemas import (
+    FullyProcessedJSON,
+    CanonicalWeatherData,
+    CanonicalWeatherPoint,
+    IntelligenceOutput,
+    NIMResponse,
+    RiskLevel,
+)
+from .weather_providers.open_meteo_provider import OpenMeteoProvider
+from .adapters.open_meteo_adapter import OpenMeteoAdapter
+from .weather_normalizer import WeatherNormalizer
+from .prediction_engine import PredictionEngine
+from .prompt_builder import NIMPromptBuilder
+from .nim_client import NIMClient
+from .response_builder import ResponseBuilder
 
 
 class IntelligenceService:
-    def __init__(self):
-        self.nim = NIMClient()
-        self.engine = PredictionEngine()
+    """
+    Main entry point for the Intelligence Layer.
+    Orchestrates weather fetching, normalization, prediction, NIM reasoning,
+    and response building.
+    """
 
-    async def reason(self, payload: FullyProcessedPayload) -> IntelligenceOutput:
-        """Generate final weather advice from fully processed context."""
+    def __init__(
+        self,
+        weather_provider: Any | None = None,
+        weather_adapter: Any | None = None,
+        weather_normalizer: Any | None = None,
+        prediction_engine: Any | None = None,
+        prompt_builder: Any | None = None,
+        nim_client: Any | None = None,
+        response_builder: Any | None = None,
+    ):
+        self.weather_provider = weather_provider or OpenMeteoProvider()
+        self.weather_adapter = weather_adapter or OpenMeteoAdapter()
+        self.weather_normalizer = weather_normalizer or WeatherNormalizer()
+        self.prediction_engine = prediction_engine or PredictionEngine()
+        self.prompt_builder = prompt_builder or NIMPromptBuilder()
+        self.nim_client = nim_client or NIMClient()
+        self.response_builder = response_builder or ResponseBuilder()
 
-        # Extract weather data from MCP context
-        weather_data = {}
-        if payload.mcp_context.weather_forecast:
-            forecast = payload.mcp_context.weather_forecast
-            # Use first day's data as representative
-            daily = forecast.get("daily", {})
-            hourly = forecast.get("hourly", {})
-            weather_data = {
-                "rain_probability": (daily.get("precipitation_probability_max", [50])[0]
-                                     if daily.get("precipitation_probability_max") else
-                                     hourly.get("precipitation_probability", [50])[0] if hourly else 50),
-                "temperature": (daily.get("temperature_2m_max", [30])[0]
-                                if daily.get("temperature_2m_max") else
-                                hourly.get("temperature_2m", [30])[0] if hourly else 30),
-                "wind_speed": (daily.get("wind_speed_10m_max", [15])[0]
-                               if daily.get("wind_speed_10m_max") else
-                               hourly.get("wind_speed_10m", [15])[0] if hourly else 15),
-                "humidity": hourly.get("relative_humidity_2m", [70])[0] if hourly else 70,
-            }
+    async def process(self, processed_json: FullyProcessedJSON) -> IntelligenceOutput:
+        """
+        Run the full Path A pipeline.
 
-        # Rule-based risk assessment
-        risk = self.engine.evaluate(weather_data, payload.domain)
+        Args:
+            processed_json: Fully processed input from Context Agent.
 
-        # Build context summary for NIM
-        context_summary = {
-            "domain": payload.domain,
-            "intent": payload.intent,
-            "location": payload.location,
-            "time_range": payload.time_range.model_dump() if payload.time_range else {},
-            "weather_data": weather_data,
-            "risk_assessment": {
-                "rain_risk": risk.rain_risk,
-                "heat_risk": risk.heat_risk,
-                "wind_risk": risk.wind_risk,
-                "overall_risk": risk.overall_risk,
-                "trip_disruption_risk": risk.trip_disruption_risk,
-            },
-            "user_constraints": payload.user_constraints,
-            "involved_context": payload.involved_context,
-            "places": payload.mcp_context.places[:5] if payload.mcp_context.places else [],
+        Returns:
+            IntelligenceOutput with prediction, recommendation, risk, explanation.
+        """
+        # 1. Build weather fetch request
+        coords = processed_json.geographical_location.coordinates
+        request = {
+            "latitude": coords.latitude,
+            "longitude": coords.longitude,
+            "timezone": processed_json.time_range.timezone,
+            "forecast_days": 7,
         }
 
-        user_prompt = f"Weather intelligence context:\n{json.dumps(context_summary, indent=2, ensure_ascii=False)}"
+        # 2. Fetch weather (Intelligence Layer owns this)
+        canonical_weather = await self._fetch_and_normalize_weather(
+            request, processed_json
+        )
 
+        # 3. Run prediction engine (deterministic)
+        prediction = self.prediction_engine.predict(processed_json, canonical_weather)
+
+        # 4. Build NIM prompt
+        messages = self.prompt_builder.build_path_a_prompt(
+            processed_json, canonical_weather, prediction
+        )
+
+        # 5. Call NIM LLM
+        nim_response = await self.nim_client.chat(messages)
+
+        # 6. Build final response
+        return self.response_builder.build(prediction, nim_response)
+
+    async def _fetch_and_normalize_weather(
+        self,
+        request: dict[str, Any],
+        processed_json: FullyProcessedJSON,
+    ) -> CanonicalWeatherData:
+        """Fetch weather from Open-Meteo and normalize to canonical format."""
         try:
-            nim_response = await self.nim.complete(
-                system_prompt=INTELLIGENCE_SYSTEM_PROMPT,
-                user_prompt=user_prompt,
-                temperature=0.4,
+            raw_bundle = await self.weather_provider.fetch(request)
+
+            context = {
+                "location": {
+                    "name": processed_json.location or "Unknown",
+                    "latitude": request["latitude"],
+                    "longitude": request["longitude"],
+                    "timezone": request["timezone"],
+                },
+                "forecast_window": {
+                    "start": processed_json.time_range.start,
+                    "end": processed_json.time_range.end,
+                },
+            }
+
+            return self.weather_normalizer.normalize(raw_bundle, context)
+
+        except Exception as exc:
+            print(f"[Intelligence] Weather fetch failed: {exc}")
+            traceback.print_exc()
+            # Return empty canonical — prediction engine will default to "medium"
+            return self._empty_canonical(request, processed_json)
+
+    def _empty_canonical(
+        self,
+        request: dict[str, Any],
+        processed_json: FullyProcessedJSON,
+    ) -> CanonicalWeatherData:
+        """Create an empty canonical weather data when fetch fails."""
+        return CanonicalWeatherData(
+            source="none",
+            source_type="fallback",
+            location={
+                "name": processed_json.location or "Unknown",
+                "latitude": request["latitude"],
+                "longitude": request["longitude"],
+                "timezone": request["timezone"],
+            },
+            forecast_window={
+                "start": processed_json.time_range.start,
+                "end": processed_json.time_range.end,
+            },
+            resolution={"temporal": "none", "spatial": "none"},
+            variables=[],
+            data_quality={
+                "missing_fields": ["all"],
+                "confidence": "none",
+                "notes": ["Weather data unavailable. Using fallback defaults."],
+            },
+        )
+
+    # ── Backwards-compatible wrapper for pipeline_service.py ──
+
+    async def reason(self, payload: Any) -> IntelligenceOutput:
+        """
+        Backwards-compatible entry point called by pipeline_service.py.
+        Accepts a FullyProcessedPayload from apps.api and converts it.
+        """
+        # If already a FullyProcessedJSON, just use it
+        if isinstance(payload, FullyProcessedJSON):
+            return await self.process(payload)
+
+        # Convert from FullyProcessedPayload (apps.api schema) to our internal schema
+        try:
+            payload_dict = payload.model_dump() if hasattr(payload, "model_dump") else payload
+
+            # Ensure coordinates exist
+            geo = payload_dict.get("geographical_location", {})
+            coords = geo.get("coordinates")
+            if not coords:
+                coords = {"latitude": 16.0544, "longitude": 108.2022}
+
+            fp = FullyProcessedJSON(
+                domain=payload_dict.get("domain", "tourism"),
+                intent=payload_dict.get("intent", "general"),
+                location=payload_dict.get("location"),
+                geographical_location={
+                    "country": geo.get("country"),
+                    "city": geo.get("city"),
+                    "coordinates": coords,
+                },
+                time_range=payload_dict.get("time_range", {
+                    "start": "2026-06-15",
+                    "end": "2026-06-17",
+                    "timezone": "Asia/Ho_Chi_Minh",
+                }),
+                involved_context=payload_dict.get("involved_context", []),
+                knowledge_context=self._extract_knowledge_context(payload_dict),
+                mcp_context=self._extract_mcp_context(payload_dict),
+                intelligence_requirements=payload_dict.get("intelligence_requirements", {
+                    "realtime_weather_needed": True,
+                    "weather_variables": [],
+                    "reasoning_task": "general_weather_advice",
+                }),
+                user_constraints=payload_dict.get("user_constraints", []),
+                raw_user_input=payload_dict.get("raw_user_input", ""),
             )
 
-            # Parse JSON response
-            import re
-            json_match = re.search(r"\{.*\}", nim_response, re.DOTALL)
-            if json_match:
-                data = json.loads(json_match.group())
-            else:
-                data = {}
+            return await self.process(fp)
 
+        except Exception as exc:
+            print(f"[Intelligence] Conversion error: {exc}")
+            traceback.print_exc()
+            # Return a minimal error output
             return IntelligenceOutput(
-                prediction=data.get("prediction", f"Weather risk is {risk.overall_risk} for {payload.domain} activities."),
-                recommendation=data.get("recommendation", self._fallback_recommendation(risk, payload.domain)),
-                risk_assessment=risk,
-                explanation=data.get("explanation", f"Based on rain risk ({risk.rain_risk}), heat risk ({risk.heat_risk}), and wind risk ({risk.wind_risk})."),
-                final_answer=data.get("final_answer", f"Overall conditions are {risk.overall_risk} for your {payload.domain} plans."),
-                domain=payload.domain,
-                location=payload.location,
-                time_range=payload.time_range.model_dump() if payload.time_range else None,
+                prediction="Unable to process weather intelligence.",
+                recommendation="Please try again with more specific location and time details.",
+                risk_assessment={"overall_risk": RiskLevel.medium},
+                explanation=f"Error during processing: {exc}",
+                final_answer="Weather intelligence is temporarily unavailable. Please try again.",
+                metadata={"error": str(exc)},
             )
 
-        except Exception as e:
-            print(f"[Intelligence] NIM error: {e}, using fallback")
-            return IntelligenceOutput(
-                prediction=f"Weather conditions are {risk.overall_risk} for {payload.domain} activities.",
-                recommendation=self._fallback_recommendation(risk, payload.domain),
-                risk_assessment=risk,
-                explanation=f"Rain risk: {risk.rain_risk}, Heat risk: {risk.heat_risk}, Wind risk: {risk.wind_risk}.",
-                final_answer=f"Based on current weather data, conditions are {risk.overall_risk} for your plans in {payload.location or 'the area'}.",
-                domain=payload.domain,
-                location=payload.location,
-            )
+    def _extract_knowledge_context(self, payload_dict: dict) -> dict:
+        """Extract knowledge context from payload, handling nested structures."""
+        kc = payload_dict.get("knowledge_context", {})
+        if isinstance(kc, dict):
+            return kc.get("found_context", kc) if "found_context" in kc else kc
+        return {}
 
-    def _fallback_recommendation(self, risk: RiskAssessment, domain: str) -> str:
-        if risk.overall_risk == "good":
-            return "Conditions look good. Proceed with your plans."
-        elif risk.overall_risk == "caution":
-            return "Exercise caution. Monitor weather updates before proceeding."
-        else:
-            if domain == "tourism":
-                return "Consider indoor alternatives or reschedule outdoor activities."
-            elif domain == "construction":
-                return "Pause outdoor operations until conditions improve."
-            elif domain == "agriculture":
-                return "Delay field operations. Monitor rainfall before irrigation decisions."
-            return "Conditions are poor. Postpone outdoor activities."
+    def _extract_mcp_context(self, payload_dict: dict) -> dict:
+        """Extract MCP context from payload, converting to flat dict."""
+        mc = payload_dict.get("mcp_context", {})
+        if isinstance(mc, dict):
+            return mc
+        if hasattr(mc, "model_dump"):
+            return mc.model_dump()
+        return {}
