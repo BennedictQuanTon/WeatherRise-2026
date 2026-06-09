@@ -1,0 +1,72 @@
+[
+  {
+    "site_id": "danang_brt_corridor_phase2",
+    "site_name": "Da Nang BRT Corridor Phase 2",
+    "city": "Da Nang",
+    "country": "Vietnam",
+    "lat": 16.054,
+    "lon": 108.202,
+    "project_type": "urban_infrastructure",
+    "structural_safety_margin_mps": 15.0,
+    "max_rain_rate_mmh": 25.0,
+    "permit_status": "ACTIVE",
+    "last_concrete_pour_log": "2026-06-08T06:30:00+07:00",
+    "restricted_weather_codes": ["gale_force_wind", "heavy_rain", "tropical_storm", "typhoon_warning"]
+  },
+  {
+    "site_id": "danang_hoa_lien_overpass",
+    "site_name": "Hoa Lien Interchange Overpass",
+    "city": "Da Nang",
+    "country": "Vietnam",
+    "lat": 16.001,
+    "lon": 108.152,
+    "project_type": "bridge",
+    "structural_safety_margin_mps": 12.0,
+    "max_rain_rate_mmh": 15.0,
+    "permit_status": "ACTIVE",
+    "last_concrete_pour_log": "2026-06-07T07:00:00+07:00",
+    "restricted_weather_codes": ["strong_wind", "heavy_rain", "gale_force_wind", "tropical_storm"]
+  },
+  {
+    "site_id": "danang_son_tra_coastal_resort",
+    "site_name": "Son Tra Coastal Resort Complex",
+    "city": "Da Nang",
+    "country": "Vietnam",
+    "lat": 16.112,
+    "lon": 108.266,
+    "project_type": "coastal_infrastructure",
+    "structural_safety_margin_mps": 10.0,
+    "max_rain_rate_mmh": 20.0,
+    "permit_status": "ACTIVE",
+    "last_concrete_pour_log": "2026-06-05T08:00:00+07:00",
+    "restricted_weather_codes": ["strong_wind", "heavy_swell", "tropical_storm", "typhoon_warning"]
+  },
+  {
+    "site_id": "danang_lien_chieu_industrial_zone",
+    "site_name": "Lien Chieu Industrial Zone Expansion",
+    "city": "Da Nang",
+    "country": "Vietnam",
+    "lat": 16.087,
+    "lon": 108.139,
+    "project_type": "industrial_complex",
+    "structural_safety_margin_mps": 18.0,
+    "max_rain_rate_mmh": 30.0,
+    "permit_status": "ACTIVE",
+    "last_concrete_pour_log": "2026-06-09T05:45:00+07:00",
+    "restricted_weather_codes": ["gale_force_wind", "typhoon_warning"]
+  },
+  {
+    "site_id": "danang_han_river_pedestrian_bridge",
+    "site_name": "Han River Pedestrian Bridge",
+    "city": "Da Nang",
+    "country": "Vietnam",
+    "lat": 16.069,
+    "lon": 108.225,
+    "project_type": "bridge",
+    "structural_safety_margin_mps": 8.0,
+    "max_rain_rate_mmh": 10.0,
+    "permit_status": "SUSPENDED",
+    "last_concrete_pour_log": "2026-05-28T09:00:00+07:00",
+    "restricted_weather_codes": ["strong_wind", "heavy_rain", "gale_force_wind", "tropical_storm", "typhoon_warning"]
+  }
+]

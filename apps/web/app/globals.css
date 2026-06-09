@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-brand: #00e5ff;
+  --color-brand-dim: #0097a7;
+  --color-surface: #0a0f1e;
+  --color-surface-2: #0d1530;
+  --color-surface-3: #111b3d;
+  --color-border: rgba(0, 229, 255, 0.12);
+  --color-text: #e8f4f8;
+  --color-text-dim: #8ba3b0;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  background: var(--color-surface);
+  color: var(--color-text);
+  min-height: 100vh;
+  scroll-behavior: smooth;
+}
+
+body {
+  background: radial-gradient(ellipse at 20% 0%, rgba(0,80,120,0.25) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 100%, rgba(0,180,255,0.1) 0%, transparent 50%),
+              var(--color-surface);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,229,255,0.2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,229,255,0.4); }
+
+/* Glass card */
+.glass {
+  background: rgba(13, 21, 48, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+}
+
+/* Animated gradient border */
+.gradient-border {
+  position: relative;
+  border-radius: 16px;
+  background: linear-gradient(var(--color-surface-2), var(--color-surface-2)) padding-box,
+              linear-gradient(135deg, #00e5ff, #0040ff, #7000ff) border-box;
+  border: 1.5px solid transparent;
+}
+
+/* Risk badge colors */
+.risk-low    { color: #00e676; background: rgba(0,230,118,0.12); }
+.risk-medium { color: #ffb300; background: rgba(255,179,0,0.12); }
+.risk-high   { color: #ff5252; background: rgba(255,82,82,0.12); }
+.risk-caution { color: #ff9800; background: rgba(255,152,0,0.12); }
+.risk-good   { color: #69f0ae; background: rgba(105,240,174,0.12); }
+.risk-poor   { color: #ff5252; background: rgba(255,82,82,0.12); }
+
+/* Pulse animation for thinking dots */
+@keyframes pulse-dot {
+  0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+  40%           { opacity: 1;   transform: scale(1); }
+}
+.thinking-dot:nth-child(1) { animation: pulse-dot 1.4s infinite 0s; }
+.thinking-dot:nth-child(2) { animation: pulse-dot 1.4s infinite 0.2s; }
+.thinking-dot:nth-child(3) { animation: pulse-dot 1.4s infinite 0.4s; }
+
+/* Slide-in animation */
+@keyframes slide-in-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.slide-in { animation: slide-in-up 0.35s ease forwards; }
+
+/* Fade in */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.fade-in { animation: fade-in 0.4s ease forwards; }
