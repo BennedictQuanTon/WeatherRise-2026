@@ -1,0 +1,3 @@
+nohup: ignoring input
+/raid/team/dev/member_1/WeatherRise-2026/gradio-ui/app.py:100: UserWarning: The parameters have been moved from the Blocks constructor to the launch() method in Gradio 6.0: theme. Please pass these parameters to launch() instead.
+  with gr.Blocks(theme=gr.themes.Soft(), title="Weatherise MVP") as demo:

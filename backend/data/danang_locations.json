@@ -1,0 +1,122 @@
+[
+  {
+    "destination_id": "danang_son_tra_peninsula",
+    "name": "Son Tra Peninsula",
+    "city": "Da Nang",
+    "country": "Vietnam",
+    "lat": 16.118,
+    "lon": 108.273,
+    "activity_type": "outdoor_nature",
+    "tags": ["nature", "mountain", "viewpoint", "outdoor"],
+    "bad_conditions": ["heavy_rain", "strong_wind", "low_visibility"],
+    "safe_alternatives": ["danang_cham_museum", "danang_han_market"]
+  },
+  {
+    "destination_id": "danang_my_khe_beach",
+    "name": "My Khe Beach",
+    "city": "Da Nang",
+    "country": "Vietnam",
+    "lat": 16.059,
+    "lon": 108.246,
+    "activity_type": "outdoor_beach",
+    "tags": ["beach", "swimming", "outdoor"],
+    "bad_conditions": ["heavy_rain", "strong_wind", "high_waves"],
+    "safe_alternatives": ["danang_han_market", "danang_cathedral"]
+  },
+  {
+    "destination_id": "danang_marble_mountains",
+    "name": "Marble Mountains",
+    "city": "Da Nang",
+    "country": "Vietnam",
+    "lat": 16.002,
+    "lon": 108.263,
+    "activity_type": "outdoor_nature",
+    "tags": ["nature", "mountain", "cave", "outdoor"],
+    "bad_conditions": ["heavy_rain", "slippery", "low_visibility"],
+    "safe_alternatives": ["danang_cham_museum", "danang_han_market"]
+  },
+  {
+    "destination_id": "danang_ba_na_hills",
+    "name": "Ba Na Hills",
+    "city": "Da Nang",
+    "country": "Vietnam",
+    "lat": 15.996,
+    "lon": 107.988,
+    "activity_type": "outdoor_theme_park",
+    "tags": ["theme_park", "mountain", "outdoor"],
+    "bad_conditions": ["heavy_rain", "strong_wind", "thunderstorm"],
+    "safe_alternatives": ["danang_cham_museum"]
+  },
+  {
+    "destination_id": "danang_dragon_bridge",
+    "name": "Dragon Bridge",
+    "city": "Da Nang",
+    "country": "Vietnam",
+    "lat": 16.061,
+    "lon": 108.227,
+    "activity_type": "outdoor_sightseeing",
+    "tags": ["sightseeing", "bridge", "outdoor"],
+    "bad_conditions": ["heavy_rain", "strong_wind"],
+    "safe_alternatives": ["danang_han_market"]
+  },
+  {
+    "destination_id": "danang_han_market",
+    "name": "Han Market",
+    "city": "Da Nang",
+    "country": "Vietnam",
+    "lat": 16.068,
+    "lon": 108.224,
+    "activity_type": "indoor_shopping",
+    "tags": ["shopping", "market", "indoor"],
+    "bad_conditions": ["extreme_flood"],
+    "safe_alternatives": []
+  },
+  {
+    "destination_id": "danang_cham_museum",
+    "name": "Cham Museum",
+    "city": "Da Nang",
+    "country": "Vietnam",
+    "lat": 16.060,
+    "lon": 108.223,
+    "activity_type": "indoor_museum",
+    "tags": ["museum", "culture", "indoor"],
+    "bad_conditions": ["extreme_flood"],
+    "safe_alternatives": []
+  },
+  {
+    "destination_id": "danang_cathedral",
+    "name": "Da Nang Cathedral",
+    "city": "Da Nang",
+    "country": "Vietnam",
+    "lat": 16.066,
+    "lon": 108.223,
+    "activity_type": "indoor_sightseeing",
+    "tags": ["church", "architecture", "indoor"],
+    "bad_conditions": ["extreme_flood"],
+    "safe_alternatives": ["danang_han_market"]
+  },
+  {
+    "destination_id": "danang_asia_park",
+    "name": "Asia Park",
+    "city": "Da Nang",
+    "country": "Vietnam",
+    "lat": 16.039,
+    "lon": 108.227,
+    "activity_type": "outdoor_theme_park",
+    "tags": ["theme_park", "entertainment", "outdoor"],
+    "bad_conditions": ["heavy_rain", "strong_wind", "thunderstorm"],
+    "safe_alternatives": ["danang_han_market", "danang_cham_museum"]
+  },
+  {
+    "destination_id": "danang_helio_night_market",
+    "name": "Helio Night Market",
+    "city": "Da Nang",
+    "country": "Vietnam",
+    "lat": 16.038,
+    "lon": 108.227,
+    "activity_type": "outdoor_market",
+    "tags": ["market", "food", "outdoor"],
+    "bad_conditions": ["heavy_rain", "strong_wind"],
+    "safe_alternatives": ["danang_han_market"]
+  }
+]
