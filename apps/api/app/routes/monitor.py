@@ -4,7 +4,7 @@ SSE endpoint — streams real-time pipeline log events to /monitor page.
 import asyncio
 import json
 import time
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from typing import AsyncIterator
 
@@ -16,7 +16,7 @@ _SUBSCRIBERS: list[asyncio.Queue] = []
 
 
 def emit(level: str, service: str, message: str, duration_ms: int | None = None, data: dict | None = None):
-    """Call this from pipeline steps to push a log entry to all subscribers."""
+    """Push a log entry to all SSE subscribers + buffer."""
     entry = {
         "id": f"{time.time():.6f}",
         "ts": int(time.time() * 1000),
@@ -36,39 +36,44 @@ def emit(level: str, service: str, message: str, duration_ms: int | None = None,
             pass
 
 
-async def _event_stream(queue: asyncio.Queue) -> AsyncIterator[str]:
-    """Generator that yields SSE events from the queue."""
-    # Send buffered logs first (last 100)
-    for entry in _LOG_BUFFER[-100:]:
-        yield f"data: {json.dumps(entry)}\n\n"
-    # Stream new events
-    while True:
-        try:
-            entry = await asyncio.wait_for(queue.get(), timeout=15.0)
+async def _event_stream(queue: asyncio.Queue, request: Request) -> AsyncIterator[str]:
+    """Generator: sends buffered logs then streams new events. Cleans up on disconnect."""
+    _SUBSCRIBERS.append(queue)
+    try:
+        # Send buffered logs first (last 50)
+        for entry in _LOG_BUFFER[-50:]:
             yield f"data: {json.dumps(entry)}\n\n"
-        except asyncio.TimeoutError:
-            # heartbeat
-            yield f"data: {json.dumps({'type': 'ping', 'ts': int(time.time() * 1000)})}\n\n"
+        # Stream new events
+        while True:
+            # Check if client disconnected
+            if await request.is_disconnected():
+                break
+            try:
+                entry = await asyncio.wait_for(queue.get(), timeout=10.0)
+                yield f"data: {json.dumps(entry)}\n\n"
+            except asyncio.TimeoutError:
+                # heartbeat ping every 10s
+                yield f"data: {json.dumps({'type': 'ping', 'ts': int(time.time() * 1000)})}\n\n"
+    finally:
+        # Always cleanup on disconnect/error
+        if queue in _SUBSCRIBERS:
+            _SUBSCRIBERS.remove(queue)
 
 
 @router.get("/api/monitor/stream")
-async def monitor_stream():
-    """SSE stream for real-time pipeline logs."""
-    queue: asyncio.Queue = asyncio.Queue(maxsize=200)
-    _SUBSCRIBERS.append(queue)
-
-    async def cleanup():
-        async for chunk in _event_stream(queue):
-            yield chunk
-        _SUBSCRIBERS.remove(queue)
-
+async def monitor_stream(request: Request):
+    """SSE stream — browser connects directly (bypasses Next.js proxy)."""
+    queue: asyncio.Queue = asyncio.Queue(maxsize=500)
     return StreamingResponse(
-        cleanup(),
+        _event_stream(queue, request),
         media_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
+            "Cache-Control": "no-cache, no-transform",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Expose-Headers": "*",
         },
     )
 

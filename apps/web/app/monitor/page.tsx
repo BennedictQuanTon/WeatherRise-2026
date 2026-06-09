@@ -1,6 +1,13 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
 
+// API runs on 8088 — connect SSE directly (Next.js proxy buffers SSE streams)
+const API_PORT = 8088;
+function apiUrl(path: string) {
+  if (typeof window === "undefined") return `http://localhost:${API_PORT}${path}`;
+  return `${window.location.protocol}//${window.location.hostname}:${API_PORT}${path}`;
+}
+
 interface LogEntry {
   id: string;
   ts: number;
@@ -61,18 +68,21 @@ export default function MonitorPage() {
     setLogs(prev => [...prev.slice(-800), entry]);
   }, []);
 
-  // Connect to SSE stream from API
+  // Connect SSE directly to API (bypass Next.js proxy which buffers SSE)
   useEffect(() => {
+    let retryTimer: ReturnType<typeof setTimeout>;
     const connect = () => {
-      if (esRef.current) esRef.current.close();
-      // Use same host, path proxied through Next.js
-      const es = new EventSource("/api/monitor/stream");
+      if (esRef.current) { esRef.current.close(); esRef.current = null; }
+      // Direct connection to API — skips Next.js rewrite buffering
+      const url = apiUrl("/api/monitor/stream");
+      const es = new EventSource(url);
       esRef.current = es;
 
       es.onopen = () => setConnected(true);
       es.onerror = () => {
         setConnected(false);
-        setTimeout(connect, 3000); // reconnect
+        es.close();
+        retryTimer = setTimeout(connect, 3000);
       };
       es.onmessage = (e) => {
         try {
@@ -83,22 +93,23 @@ export default function MonitorPage() {
       };
     };
     connect();
-    return () => esRef.current?.close();
+    return () => { clearTimeout(retryTimer); esRef.current?.close(); };
   }, [push]);
 
-  // Check service health via API (avoid CORS — go through Next.js proxy)
+  // Check service health — direct to API (CORS is open)
   const checkHealth = useCallback(async () => {
+    const t0 = Date.now();
     try {
-      const r = await fetch("/health", { signal: AbortSignal.timeout(5000) });
+      const r = await fetch(apiUrl("/health"), { signal: AbortSignal.timeout(5000) });
       const d = await r.json();
-      const t0 = Date.now();
+      const apiLatency = Date.now() - t0;
       setSvcs(prev => prev.map(svc => {
-        if (svc.key === "api") return { ...svc, status: "ok", latency: Date.now() - t0 };
+        if (svc.key === "api") return { ...svc, status: "ok", latency: apiLatency };
         const s = d.services?.[svc.key];
-        return { ...svc, status: s === "ok" ? "ok" : s ? "degraded" : "unreachable", latency: undefined };
+        return { ...svc, status: s === "ok" ? "ok" : s === "degraded" ? "degraded" : "unreachable" };
       }));
     } catch {
-      setSvcs(prev => prev.map(s => ({ ...s, status: s.key === "api" ? "unreachable" : s.status })));
+      setSvcs(prev => prev.map(s => ({ ...s, status: "unreachable" })));
     }
   }, []);
 
@@ -113,19 +124,20 @@ export default function MonitorPage() {
     if (autoScroll) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logs, autoScroll]);
 
-  // Inline pipeline test — goes through API (/api/chat) which is proxied
+  // Inline pipeline test — directly to API
   const runTest = async () => {
     if (testing) return;
     setTesting(true);
-    push({ id: Date.now().toString(), ts: Date.now(), level: "info", service: "Monitor", message: `▶ Manual test: "${testInput}"` });
+    push({ id: Date.now().toString(), ts: Date.now(), level: "info", service: "Monitor", message: `▶ Quick Test: "${testInput}"` });
     try {
-      const r = await fetch("/api/chat", {
+      const r = await fetch(apiUrl("/api/chat"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: testInput }),
       });
       const d = await r.json();
-      push({ id: Date.now().toString(), ts: Date.now(), level: d.status === "success" ? "success" : "error", service: "Monitor", message: `Test done: ${d.final_answer?.slice(0, 80) ?? d.error}` });
+      // result will come via SSE stream automatically
+      push({ id: Date.now().toString(), ts: Date.now(), level: "info", service: "Monitor", message: `HTTP response received (logs above via SSE)` });
     } catch (e: any) {
       push({ id: Date.now().toString(), ts: Date.now(), level: "error", service: "Monitor", message: `Test failed: ${e.message}` });
     }
