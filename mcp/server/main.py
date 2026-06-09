@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from typing import Any, Dict
 
-from server.routes import (
+from mcp.server.routes import (
     location_router,
     weather_router,
     place_router,

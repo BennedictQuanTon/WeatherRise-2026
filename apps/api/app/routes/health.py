@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 import httpx
-from app.config import get_settings
+from apps.api.app.config import get_settings
 
 router = APIRouter()
 settings = get_settings()

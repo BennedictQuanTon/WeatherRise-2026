@@ -1,7 +1,7 @@
 import uuid
 from fastapi import APIRouter, HTTPException
-from app.schemas.response_schema import ChatRequest, ChatResponse
-from app.services.pipeline_service import run_pipeline
+from apps.api.app.schemas.response_schema import ChatRequest, ChatResponse
+from apps.api.app.services.pipeline_service import run_pipeline
 
 router = APIRouter()
 

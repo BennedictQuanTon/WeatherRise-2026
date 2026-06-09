@@ -2,9 +2,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes.health import router as health_router
-from app.routes.chat import router as chat_router
-from app.routes.websocket import router as ws_router
+from apps.api.app.routes.health import router as health_router
+from apps.api.app.routes.chat import router as chat_router
+from apps.api.app.routes.websocket import router as ws_router
 
 
 @asynccontextmanager

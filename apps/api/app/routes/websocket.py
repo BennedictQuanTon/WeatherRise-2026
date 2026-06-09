@@ -1,7 +1,7 @@
 import uuid
 import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from app.services.pipeline_service import run_pipeline_streaming
+from apps.api.app.services.pipeline_service import run_pipeline_streaming
 
 router = APIRouter()
 
