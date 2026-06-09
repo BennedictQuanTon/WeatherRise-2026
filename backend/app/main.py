@@ -3,12 +3,14 @@ from fastapi import FastAPI, HTTPException
 from .utils.redis import redis_manager
 from .configs.db_config import init_db
 from .routers.destination import router as destination_router
+from .routers.chat import router as chat_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 1. Startup phase: Establish the global Redis connection pool
     app.state.redis = redis_manager.initialize_pool()
-    
+
     # Verify loopback connectivity immediately on boot
     try:
         await app.state.redis.ping()
@@ -19,13 +21,15 @@ async def lifespan(app: FastAPI):
 
     # Initialize the database
     await init_db()
-    
+
     yield
-    
+
     # 2. Shutdown phase: Safely flush and release socket pools
     await redis_manager.close_pool()
 
+
 app = FastAPI(title="Weatherise", lifespan=lifespan)
+
 
 @app.get("/health")
 async def health_check():
@@ -34,5 +38,8 @@ async def health_check():
         return {"status": "healthy", "redis": "connected", "message": "All systems operational"}
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Redis connection failed: {e}")
-    
+
+
+# --- Routers ---
 app.include_router(destination_router)
+app.include_router(chat_router)   # Phase 4: POST /chat — single-domain routing pipeline
