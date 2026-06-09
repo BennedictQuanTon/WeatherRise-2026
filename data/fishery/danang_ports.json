@@ -1,0 +1,72 @@
+[
+  {
+    "port_id": "danang_tho_quang_port",
+    "port_name": "Tho Quang Fishing Port",
+    "city": "Da Nang",
+    "country": "Vietnam",
+    "lat": 16.107,
+    "lon": 108.247,
+    "port_type": "commercial_fishing",
+    "berth_capacity": 450,
+    "fleet_status": "OPERATIONAL",
+    "active_vessel_count": 312,
+    "restricted_weather_codes": ["tropical_storm", "gale_force_wind", "heavy_swell", "typhoon_warning"],
+    "safe_harbor_ids": ["danang_son_tra_bay_shelter", "hoi_an_cua_dai_port"]
+  },
+  {
+    "port_id": "danang_son_tra_bay_shelter",
+    "port_name": "Son Tra Bay Emergency Shelter",
+    "city": "Da Nang",
+    "country": "Vietnam",
+    "lat": 16.114,
+    "lon": 108.262,
+    "port_type": "emergency_shelter",
+    "berth_capacity": 200,
+    "fleet_status": "OPERATIONAL",
+    "active_vessel_count": 45,
+    "restricted_weather_codes": ["typhoon_warning"],
+    "safe_harbor_ids": []
+  },
+  {
+    "port_id": "danang_lien_chieu_port",
+    "port_name": "Lien Chieu Deep Water Port",
+    "city": "Da Nang",
+    "country": "Vietnam",
+    "lat": 16.094,
+    "lon": 108.146,
+    "port_type": "deep_sea_fleet",
+    "berth_capacity": 80,
+    "fleet_status": "OPERATIONAL",
+    "active_vessel_count": 28,
+    "restricted_weather_codes": ["gale_force_wind", "typhoon_warning", "extreme_swell"],
+    "safe_harbor_ids": ["danang_son_tra_bay_shelter"]
+  },
+  {
+    "port_id": "danang_my_khe_fishing_village",
+    "port_name": "My Khe Inshore Fishing Village",
+    "city": "Da Nang",
+    "country": "Vietnam",
+    "lat": 16.057,
+    "lon": 108.248,
+    "port_type": "inshore_fishing",
+    "berth_capacity": 120,
+    "fleet_status": "OPERATIONAL",
+    "active_vessel_count": 87,
+    "restricted_weather_codes": ["strong_wind", "heavy_rain", "tropical_storm"],
+    "safe_harbor_ids": ["danang_tho_quang_port"]
+  },
+  {
+    "port_id": "hoi_an_cua_dai_port",
+    "port_name": "Cua Dai Fishing Port",
+    "city": "Hoi An",
+    "country": "Vietnam",
+    "lat": 15.880,
+    "lon": 108.338,
+    "port_type": "commercial_fishing",
+    "berth_capacity": 300,
+    "fleet_status": "OPERATIONAL",
+    "active_vessel_count": 198,
+    "restricted_weather_codes": ["gale_force_wind", "typhoon_warning", "heavy_swell"],
+    "safe_harbor_ids": ["danang_tho_quang_port"]
+  }
+]
