@@ -1,29 +1,73 @@
 #!/usr/bin/env python3
 """
-Weatherise Path A mock JSON benchmark runner.
+Weatherise Path A benchmark runner.
 
-Usage:
-  python agents/intelligence_layer/benchmark/scripts/run_path_a_mock_test.py \\
-    --case benchmark_cases/path_a_cases.json \\
-    --model nemotron_nano_8b
+─────────────────────────────────────────────────────────────
+MODEL SELECTION
+─────────────────────────────────────────────────────────────
+  --model env        (DEFAULT) Auto-reads NIM_LLM_BASE_URL and NIM_LLM_MODEL
+                     directly from the repo-root .env file. Change the model
+                     there and just re-run — no yaml editing needed.
 
-  python agents/intelligence_layer/benchmark/scripts/run_path_a_mock_test.py \\
-    --case benchmark_cases/path_a_cases.json \\
-    --model nemotron_nano_8b --dry-run
+  --model <key>      Use a named entry from config/nim_models.yaml.
+                     e.g. --model nemotron_nano_8b
+
+─────────────────────────────────────────────────────────────
+WEATHER SOURCE
+─────────────────────────────────────────────────────────────
+  (default)  Load frozen canonical weather JSON from mock_data/.
+             Results are 100% reproducible across runs.
+
+  --live     Fetch real hourly weather from Open-Meteo right now.
+             Results will reflect actual current conditions.
+             Falls back to mock file if Open-Meteo is unreachable.
+
+─────────────────────────────────────────────────────────────
+NIM CALL
+─────────────────────────────────────────────────────────────
+  (default)  Call the NIM LLM endpoint. Requires NIM container running.
+
+  --dry-run  Skip NIM. Use prediction engine text as the final answer.
+             No GPU, no NIM container needed. Good for testing the pipeline.
+
+─────────────────────────────────────────────────────────────
+ALL 4 COMBINATIONS
+─────────────────────────────────────────────────────────────
+  Mock + NIM (reproducible benchmark):
+    python3 scripts/run_path_a_mock_test.py \\
+      --case benchmark_cases/path_a_cases.json
+
+  Mock + no NIM (fast smoke-test, zero dependencies):
+    python3 scripts/run_path_a_mock_test.py \\
+      --case benchmark_cases/path_a_cases.json --dry-run
+
+  Live weather + NIM (full end-to-end test):
+    python3 scripts/run_path_a_mock_test.py \\
+      --case benchmark_cases/path_a_cases.json --live
+
+  Live weather + no NIM (test Open-Meteo fetch only):
+    python3 scripts/run_path_a_mock_test.py \\
+      --case benchmark_cases/path_a_cases.json --live --dry-run
+
+  Override model from yaml (instead of .env):
+    python3 scripts/run_path_a_mock_test.py \\
+      --case benchmark_cases/path_a_cases.json --model nemotron_nano_8b
 
 Dependencies:
-  pip install openai pyyaml
+  pip install openai pyyaml httpx
 """
 
 import argparse
 import asyncio
 import csv
 import json
+import os
 import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import httpx
 import yaml
 
 # Use openai for NIM calls (matching intelligence layer's nim_client.py)
@@ -33,7 +77,74 @@ from openai import AsyncOpenAI
 # ── Path resolution ──────────────────────────────────────────
 
 BENCHMARK_ROOT = Path(__file__).resolve().parents[1]  # benchmark/
-LAYER_ROOT = BENCHMARK_ROOT.parent  # intelligence_layer/
+LAYER_ROOT = BENCHMARK_ROOT.parent                     # intelligence_layer/
+REPO_ROOT = LAYER_ROOT.parents[1]                      # WeatherRise-2026/
+
+
+# ── .env auto-loader (no python-dotenv dependency) ───────────
+
+def _load_dotenv(env_path: Path) -> None:
+    """
+    Parse key=value pairs from a .env file and set them in os.environ.
+    - Skips blank lines and comment lines (starting with #)
+    - Does NOT override vars already set in the shell environment
+    - Strips surrounding quotes from values
+    """
+    if not env_path.exists():
+        return
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        # Never overwrite shell-level env vars — they take priority
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+# Load .env as early as possible so NIM_LLM_* vars are available
+_load_dotenv(REPO_ROOT / ".env")
+
+
+# ── Model config resolver ─────────────────────────────────────
+
+def resolve_model_config(model_key: str, registry: dict) -> dict:
+    """
+    Resolve model configuration from either:
+      - 'env'  → read NIM_LLM_BASE_URL and NIM_LLM_MODEL from environment
+      - <key>  → look up in nim_models.yaml registry
+
+    Raises SystemExit with helpful message if the key is not found.
+    """
+    if model_key == "env":
+        base_url = os.environ.get("NIM_LLM_BASE_URL", "http://localhost:8001/v1")
+        model = os.environ.get("NIM_LLM_MODEL", "nvidia/llama-3.1-nemotron-nano-8b-v1")
+        print(f"[config] Using model from .env: {model} @ {base_url}")
+        return {
+            "display_name": f"{model} (from .env)",
+            "provider": "nvidia_nim",
+            "base_url": base_url,
+            "model": model,
+            "temperature": 0.2,
+            "max_tokens": 2048,
+            "timeout_seconds": 60,
+            "enabled": True,
+        }
+
+    models = registry.get("models", {})
+    if model_key not in models:
+        available = ["env"] + list(models.keys())
+        raise SystemExit(
+            f"Unknown model key: '{model_key}'.\n"
+            f"Available keys: {available}\n"
+            f"  'env'  → reads NIM_LLM_BASE_URL + NIM_LLM_MODEL from .env\n"
+            f"  others → entries in config/nim_models.yaml"
+        )
+    cfg = models[model_key]
+    print(f"[config] Using model from yaml key '{model_key}': {cfg['model']} @ {cfg['base_url']}")
+    return cfg
 
 
 def load_json(path: str | Path) -> Any:
@@ -48,6 +159,112 @@ def load_yaml(path: str | Path) -> Any:
     if not path.is_absolute():
         path = BENCHMARK_ROOT / path
     return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+# ── Open-Meteo Live Fetcher ──────────────────────────────────
+
+OPEN_METEO_URL = os.getenv("OPEN_METEO_BASE_URL", "https://api.open-meteo.com/v1")
+
+HOURLY_VARIABLES = [
+    "temperature_2m",
+    "relative_humidity_2m",
+    "precipitation_probability",
+    "precipitation",
+    "wind_speed_10m",
+    "wind_gusts_10m",
+    "weather_code",
+]
+
+OPEN_METEO_FIELD_MAP = {
+    "temperature_2m":            "temperature_c",
+    "relative_humidity_2m":      "humidity_percent",
+    "precipitation_probability":  "rain_probability",
+    "precipitation":             "precipitation_mm",
+    "wind_speed_10m":            "wind_speed_kmh",
+    "wind_gusts_10m":            "wind_gust_kmh",
+    "weather_code":              "weather_code",
+}
+
+
+async def fetch_open_meteo(
+    latitude: float,
+    longitude: float,
+    timezone: str = "Asia/Ho_Chi_Minh",
+    forecast_days: int = 7,
+) -> dict[str, Any]:
+    """
+    Call Open-Meteo API and return raw response dict.
+    Raises on network or HTTP errors.
+    """
+    params = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "hourly": ",".join(HOURLY_VARIABLES),
+        "timezone": timezone,
+        "forecast_days": forecast_days,
+    }
+    async with httpx.AsyncClient(timeout=20) as client:
+        resp = await client.get(f"{OPEN_METEO_URL}/forecast", params=params)
+        resp.raise_for_status()
+        return resp.json()
+
+
+def raw_to_canonical(
+    raw: dict[str, Any],
+    case: dict[str, Any],
+    fully: dict[str, Any],
+) -> dict[str, Any]:
+    """
+    Convert a raw Open-Meteo API response into Canonical Weather JSON.
+    Mirrors the logic in adapters/open_meteo_adapter.py.
+    """
+    hourly = raw.get("hourly", {})
+    times = hourly.get("time", [])
+    geo = fully.get("geographical_location", {})
+    coords = geo.get("coordinates", {})
+    time_range = fully.get("time_range", {})
+
+    variables = []
+    for idx, t in enumerate(times):
+        point: dict[str, Any] = {"time": t}
+        for raw_field, canonical_field in OPEN_METEO_FIELD_MAP.items():
+            values = hourly.get(raw_field)
+            if values and idx < len(values):
+                point[canonical_field] = values[idx]
+            else:
+                point[canonical_field] = None
+        point["storm_risk"] = None
+        variables.append(point)
+
+    missing = [f for f in OPEN_METEO_FIELD_MAP if not hourly.get(f)]
+
+    return {
+        "source": "open_meteo",
+        "source_type": "api_forecast_live",
+        "location": {
+            "name": fully.get("location", "Unknown"),
+            "latitude": coords.get("latitude", raw.get("latitude")),
+            "longitude": coords.get("longitude", raw.get("longitude")),
+            "timezone": time_range.get("timezone", "Asia/Ho_Chi_Minh"),
+        },
+        "forecast_window": {
+            "start": time_range.get("start", ""),
+            "end": time_range.get("end", ""),
+        },
+        "resolution": {
+            "temporal": "hourly",
+            "spatial": "city_level",
+        },
+        "variables": variables,
+        "data_quality": {
+            "missing_fields": missing,
+            "confidence": "high" if not missing else "medium",
+            "notes": [
+                "Live data fetched from Open-Meteo API.",
+                f"Fetched at {datetime.utcnow().isoformat()}Z",
+            ],
+        },
+    }
 
 
 # ── Prediction Engine (inline for benchmark independence) ────
@@ -110,8 +327,14 @@ def predict_tourism(canonical_weather: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "domain": "tourism",
-        "prediction_summary": f"Rain risk is {rain_risk}, heat risk is {heat_risk}, and wind risk is {wind_risk}.",
-        "recommendation_summary": "Adjust outdoor activities based on the highest weather risk and keep suitable indoor backups.",
+        "prediction_summary": (
+            f"Rain risk is {rain_risk}, heat risk is {heat_risk}, "
+            f"and wind risk is {wind_risk}."
+        ),
+        "recommendation_summary": (
+            "Adjust outdoor activities based on the highest weather risk "
+            "and keep suitable indoor backups."
+        ),
         "risk_assessment": {
             "rain_risk": rain_risk,
             "heat_risk": heat_risk,
@@ -166,14 +389,17 @@ def build_messages(
     ]
 
 
-# ── NIM Client (using openai) ───────────────────────────────
+# ── NIM Client (using openai) ────────────────────────────────
 
-async def call_nim(model_cfg: dict[str, Any], messages: list[dict[str, str]]) -> dict[str, Any]:
+async def call_nim(
+    model_cfg: dict[str, Any],
+    messages: list[dict[str, str]],
+) -> dict[str, Any]:
     start = time.perf_counter()
 
     client = AsyncOpenAI(
         base_url=model_cfg["base_url"],
-        api_key="not-needed",
+        api_key=os.getenv("NGC_API_KEY", "not-needed"),
     )
 
     response = await client.chat.completions.create(
@@ -243,10 +469,13 @@ def check_output(
 
     output_text = json.dumps(parsed, ensure_ascii=False).lower()
     must_not = expected.get("must_not_invent", [])
-    hallucination_warning_count = sum(1 for term in must_not if term.lower() in output_text)
-
+    hallucination_warning_count = sum(
+        1 for term in must_not if term.lower() in output_text
+    )
     must_mention = expected.get("must_mention", [])
-    must_mention_score = sum(1 for term in must_mention if term.lower() in output_text)
+    must_mention_score = sum(
+        1 for term in must_mention if term.lower() in output_text
+    )
 
     return {
         "valid_json": True,
@@ -261,26 +490,66 @@ def check_output(
 
 async def run(args: argparse.Namespace) -> None:
     registry = load_yaml("config/nim_models.yaml")
-    if args.model not in registry["models"]:
-        raise SystemExit(f"Unknown model key: {args.model}")
-    model_cfg = registry["models"][args.model]
+    model_cfg = resolve_model_config(args.model, registry)
 
     cases = load_json(args.case)
+    mode_label = "live" if args.live else "mock"
+    dry_label = "_dryrun" if args.dry_run else ""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = BENCHMARK_ROOT / "outputs" / "path_a_runs" / f"{timestamp}_{args.model}"
+    output_dir = (
+        BENCHMARK_ROOT / "outputs" / "path_a_runs"
+        / f"{timestamp}_{args.model}_{mode_label}{dry_label}"
+    )
     output_dir.mkdir(parents=True, exist_ok=True)
 
     raw_jsonl = output_dir / "raw_model_outputs.jsonl"
     parsed_outputs = []
     summary_rows = []
-    review_lines = [f"# Human Review — Path A Benchmark\n", f"Model key: `{args.model}`\n"]
+    review_lines = [
+        f"# Human Review — Path A Benchmark\n",
+        f"Model: `{model_cfg['model']}`\n",
+        f"Mode: `{mode_label}`\n",
+        f"Dry-run: `{args.dry_run}`\n",
+        f"Timestamp: `{timestamp}`\n",
+    ]
 
     for case in cases:
+        case_id = case["case_id"]
         fully = load_json(case["fully_processed_json_path"])
-        weather = load_json(case["canonical_weather_json_path"])
-        prediction = predict_tourism(weather)
-        messages = build_messages(fully, weather, prediction)
 
+        # ── Weather source decision ───────────────────────────
+        if args.live:
+            # Fetch real weather from Open-Meteo
+            geo = fully.get("geographical_location", {})
+            coords = geo.get("coordinates", {})
+            lat = coords.get("latitude", 16.0544)
+            lon = coords.get("longitude", 108.2022)
+            tz = fully.get("time_range", {}).get("timezone", "Asia/Ho_Chi_Minh")
+
+            print(f"[{case_id}] Fetching live weather from Open-Meteo ({lat}, {lon})...")
+            try:
+                raw_weather = await fetch_open_meteo(lat, lon, tz)
+                canonical_weather = raw_to_canonical(raw_weather, case, fully)
+                weather_source = f"open_meteo_live ({lat}, {lon})"
+            except Exception as exc:
+                print(f"[{case_id}] Open-Meteo fetch failed: {exc}. Falling back to mock.")
+                canonical_weather = load_json(case["canonical_weather_json_path"])
+                weather_source = "mock_fallback_after_error"
+        else:
+            # Load frozen mock canonical weather file
+            canonical_weather = load_json(case["canonical_weather_json_path"])
+            weather_source = "mock_canonical_file"
+
+        # ── Prediction Engine ─────────────────────────────────
+        prediction = predict_tourism(canonical_weather)
+        messages = build_messages(fully, canonical_weather, prediction)
+
+        print(
+            f"[{case_id}] Weather: {weather_source} | "
+            f"Prediction: {prediction['risk_assessment']}"
+        )
+
+        # ── NIM call (or dry-run) ─────────────────────────────
         if args.dry_run:
             response = {
                 "model": model_cfg["model"],
@@ -288,15 +557,21 @@ async def run(args: argparse.Namespace) -> None:
                     "prediction": prediction["prediction_summary"],
                     "recommendation": prediction["recommendation_summary"],
                     "explanation": "DRY RUN: no NIM endpoint was called.",
-                    "final_answer": "DRY RUN response generated locally."
+                    "final_answer": (
+                        f"DRY RUN — {prediction['prediction_summary']} "
+                        f"({prediction['recommendation_summary']})"
+                    ),
                 }, ensure_ascii=False),
                 "usage": {},
                 "latency_ms": 0,
                 "error": None,
+                "weather_source": weather_source,
             }
         else:
+            print(f"[{case_id}] Calling NIM ({model_cfg['model']})...")
             try:
                 response = await call_nim(model_cfg, messages)
+                response["weather_source"] = weather_source
             except Exception as exc:
                 response = {
                     "model": model_cfg["model"],
@@ -304,16 +579,19 @@ async def run(args: argparse.Namespace) -> None:
                     "usage": {},
                     "latency_ms": None,
                     "error": str(exc),
+                    "weather_source": weather_source,
                 }
 
-        valid, parsed = parse_json_response(response["content"])
+        # ── Validate + collect ────────────────────────────────
+        _, parsed = parse_json_response(response["content"])
         checks = check_output(parsed, case.get("expected_behavior", {}), prediction)
 
         record = {
-            "case_id": case["case_id"],
+            "case_id": case_id,
             "description": case.get("description"),
             "model_key": args.model,
             "model": response["model"],
+            "weather_source": weather_source,
             "prediction_engine_result": prediction,
             "messages": messages,
             "response": response,
@@ -324,9 +602,10 @@ async def run(args: argparse.Namespace) -> None:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
         parsed_outputs.append(record)
 
-        row = {
-            "case_id": case["case_id"],
+        summary_rows.append({
+            "case_id": case_id,
             "model": response["model"],
+            "weather_source": weather_source,
             "valid_json": checks["valid_json"],
             "required_fields_present": checks["required_fields_present"],
             "risk_preserved": checks["risk_preserved"],
@@ -334,18 +613,19 @@ async def run(args: argparse.Namespace) -> None:
             "must_mention_score": checks["must_mention_score"],
             "latency_ms": response["latency_ms"],
             "error": response["error"],
-        }
-        summary_rows.append(row)
+        })
 
         print(
-            f"CASE={case['case_id']} MODEL={response['model']} "
-            f"VALID_JSON={checks['valid_json']} RISK_PRESERVED={checks['risk_preserved']} "
+            f"[{case_id}] VALID_JSON={checks['valid_json']} "
+            f"RISK_PRESERVED={checks['risk_preserved']} "
             f"LATENCY_MS={response['latency_ms']} ERROR={response['error']}"
         )
 
         review_lines.extend([
-            f"\n## {case['case_id']}\n",
+            f"\n## {case_id}\n",
             f"- Description: {case.get('description')}\n",
+            f"- Weather source: `{weather_source}`\n",
+            f"- Risk: `{prediction['risk_assessment']}`\n",
             f"- Valid JSON: {checks['valid_json']}\n",
             f"- Risk preserved: {checks['risk_preserved']}\n",
             f"- Latency: {response['latency_ms']} ms\n",
@@ -355,26 +635,71 @@ async def run(args: argparse.Namespace) -> None:
             "\n\n### Manual notes\n\n- TODO: Add human review here.\n",
         ])
 
+    # ── Save outputs ──────────────────────────────────────────
     (output_dir / "parsed_outputs.json").write_text(
         json.dumps(parsed_outputs, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     if summary_rows:
-        with (output_dir / "benchmark_summary.csv").open("w", newline="", encoding="utf-8") as f:
+        with (output_dir / "benchmark_summary.csv").open(
+            "w", newline="", encoding="utf-8"
+        ) as f:
             writer = csv.DictWriter(f, fieldnames=list(summary_rows[0].keys()))
             writer.writeheader()
             writer.writerows(summary_rows)
     (output_dir / "human_review.md").write_text(
         "\n".join(review_lines), encoding="utf-8"
     )
-
     print(f"\nSaved outputs to: {output_dir}")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Weatherise Path A mock benchmark runner")
-    parser.add_argument("--case", required=True, help="Path to benchmark case JSON file")
-    parser.add_argument("--model", default="nemotron_nano_8b", help="Model key from config/nim_models.yaml")
-    parser.add_argument("--dry-run", action="store_true", help="Do not call NIM; generate local dry-run response")
+    parser = argparse.ArgumentParser(
+        description="Weatherise Path A benchmark runner",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+MODEL SELECTION
+  --model env     (default) reads NIM_LLM_BASE_URL + NIM_LLM_MODEL from .env
+  --model <key>   named entry in config/nim_models.yaml
+
+EXAMPLES
+  Use whatever model is in .env, frozen mock, call NIM:
+    python3 scripts/run_path_a_mock_test.py --case benchmark_cases/path_a_cases.json
+
+  Use whatever model is in .env, frozen mock, no NIM (smoke-test):
+    python3 scripts/run_path_a_mock_test.py --case benchmark_cases/path_a_cases.json --dry-run
+
+  Use whatever model is in .env, live Open-Meteo, call NIM:
+    python3 scripts/run_path_a_mock_test.py --case benchmark_cases/path_a_cases.json --live
+
+  Use whatever model is in .env, live weather, no NIM:
+    python3 scripts/run_path_a_mock_test.py --case benchmark_cases/path_a_cases.json --live --dry-run
+
+  Force a specific model from yaml, frozen mock, call NIM:
+    python3 scripts/run_path_a_mock_test.py --case benchmark_cases/path_a_cases.json --model nemotron_nano_8b
+
+  Force a specific model, live weather, call NIM:
+    python3 scripts/run_path_a_mock_test.py --case benchmark_cases/path_a_cases.json --model nemotron_nano_8b --live
+        """,
+    )
+    parser.add_argument(
+        "--case", required=True,
+        help="Path to benchmark case JSON (relative to benchmark/ root)",
+    )
+    parser.add_argument(
+        "--model", default="env",
+        help=(
+            "Model to use. 'env' (default) reads NIM_LLM_BASE_URL + NIM_LLM_MODEL "
+            "from the repo .env file. Any other value is looked up in config/nim_models.yaml."
+        ),
+    )
+    parser.add_argument(
+        "--live", action="store_true",
+        help="Fetch real weather from Open-Meteo instead of frozen mock files",
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true",
+        help="Skip NIM call — use prediction engine text as final answer (no GPU needed)",
+    )
     args = parser.parse_args()
     asyncio.run(run(args))
 

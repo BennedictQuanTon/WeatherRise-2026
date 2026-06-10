@@ -1,0 +1,164 @@
+[
+  {
+    "case_id": "tourism_high_rain_001",
+    "description": "Da Nang trip planning with high rain risk.",
+    "model_key": "nemotron_nano_8b",
+    "model": "nvidia/llama-3.1-nemotron-nano-8b-v1",
+    "weather_source": "open_meteo_live (16.0544, 108.2022)",
+    "prediction_engine_result": {
+      "domain": "tourism",
+      "prediction_summary": "Rain risk is high, heat risk is medium, and wind risk is low.",
+      "recommendation_summary": "Adjust outdoor activities based on the highest weather risk and keep suitable indoor backups.",
+      "risk_assessment": {
+        "rain_risk": "high",
+        "heat_risk": "medium",
+        "wind_risk": "low",
+        "trip_disruption_risk": "high"
+      },
+      "evidence": [
+        "Maximum rain probability: 92%",
+        "Maximum temperature: 36.5°C",
+        "Maximum wind speed: 15.1 km/h"
+      ]
+    },
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are Weatherise, a weather-aware advisory system. Use the deterministic Prediction Engine result exactly. Do not overwrite risk_assessment. Do not invent weather data, warnings, or sources. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "{\n  \"task\": \"Generate a final Weatherise response for Path A.\",\n  \"domain\": \"tourism\",\n  \"intent\": \"travel_planning\",\n  \"raw_user_input\": \"Plan a 3-day trip in Da Nang and avoid heavy rain.\",\n  \"user_constraints\": [\n    \"avoid heavy rain\",\n    \"prefer outdoor sightseeing when safe\"\n  ],\n  \"knowledge_context\": {\n    \"tourist_attractions\": \"My Khe Beach and Son Tra are outdoor. Han Market and Cham Museum are indoor backups.\"\n  },\n  \"weather_data_quality\": {\n    \"missing_fields\": [],\n    \"confidence\": \"high\",\n    \"notes\": [\n      \"Live data fetched from Open-Meteo API.\",\n      \"Fetched at 2026-06-10T02:16:28.024041Z\"\n    ]\n  },\n  \"prediction_engine_result\": {\n    \"domain\": \"tourism\",\n    \"prediction_summary\": \"Rain risk is high, heat risk is medium, and wind risk is low.\",\n    \"recommendation_summary\": \"Adjust outdoor activities based on the highest weather risk and keep suitable indoor backups.\",\n    \"risk_assessment\": {\n      \"rain_risk\": \"high\",\n      \"heat_risk\": \"medium\",\n      \"wind_risk\": \"low\",\n      \"trip_disruption_risk\": \"high\"\n    },\n    \"evidence\": [\n      \"Maximum rain probability: 92%\",\n      \"Maximum temperature: 36.5°C\",\n      \"Maximum wind speed: 15.1 km/h\"\n    ]\n  },\n  \"required_output_schema\": {\n    \"prediction\": \"string\",\n    \"recommendation\": \"string\",\n    \"explanation\": \"string\",\n    \"final_answer\": \"string\"\n  },\n  \"hard_rules\": [\n    \"Do not change risk levels.\",\n    \"Do not add typhoon, flood, or official warning unless present in input.\",\n    \"Base recommendations only on the provided evidence and context.\"\n  ]\n}"
+      }
+    ],
+    "response": {
+      "model": "nvidia/llama-3.1-nemotron-nano-8b-v1",
+      "content": "{\"prediction\": \"Rain risk is high, heat risk is medium, and wind risk is low.\", \"recommendation\": \"Adjust outdoor activities based on the highest weather risk and keep suitable indoor backups.\", \"explanation\": \"DRY RUN: no NIM endpoint was called.\", \"final_answer\": \"DRY RUN — Rain risk is high, heat risk is medium, and wind risk is low. (Adjust outdoor activities based on the highest weather risk and keep suitable indoor backups.)\"}",
+      "usage": {},
+      "latency_ms": 0,
+      "error": null,
+      "weather_source": "open_meteo_live (16.0544, 108.2022)"
+    },
+    "parsed_output": {
+      "prediction": "Rain risk is high, heat risk is medium, and wind risk is low.",
+      "recommendation": "Adjust outdoor activities based on the highest weather risk and keep suitable indoor backups.",
+      "explanation": "DRY RUN: no NIM endpoint was called.",
+      "final_answer": "DRY RUN — Rain risk is high, heat risk is medium, and wind risk is low. (Adjust outdoor activities based on the highest weather risk and keep suitable indoor backups.)"
+    },
+    "checks": {
+      "valid_json": true,
+      "required_fields_present": true,
+      "risk_preserved": true,
+      "hallucination_warning_count": 0,
+      "must_mention_score": 3
+    }
+  },
+  {
+    "case_id": "tourism_heat_risk_001",
+    "description": "Da Nang outdoor plan with high heat risk.",
+    "model_key": "nemotron_nano_8b",
+    "model": "nvidia/llama-3.1-nemotron-nano-8b-v1",
+    "weather_source": "open_meteo_live (16.0544, 108.2022)",
+    "prediction_engine_result": {
+      "domain": "tourism",
+      "prediction_summary": "Rain risk is high, heat risk is medium, and wind risk is low.",
+      "recommendation_summary": "Adjust outdoor activities based on the highest weather risk and keep suitable indoor backups.",
+      "risk_assessment": {
+        "rain_risk": "high",
+        "heat_risk": "medium",
+        "wind_risk": "low",
+        "trip_disruption_risk": "high"
+      },
+      "evidence": [
+        "Maximum rain probability: 92%",
+        "Maximum temperature: 36.5°C",
+        "Maximum wind speed: 15.1 km/h"
+      ]
+    },
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are Weatherise, a weather-aware advisory system. Use the deterministic Prediction Engine result exactly. Do not overwrite risk_assessment. Do not invent weather data, warnings, or sources. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "{\n  \"task\": \"Generate a final Weatherise response for Path A.\",\n  \"domain\": \"tourism\",\n  \"intent\": \"travel_planning\",\n  \"raw_user_input\": \"Plan an outdoor sightseeing day in Da Nang but avoid extreme heat.\",\n  \"user_constraints\": [\n    \"avoid extreme heat\",\n    \"prefer morning outdoor activities\"\n  ],\n  \"knowledge_context\": {\n    \"tourist_attractions\": \"My Khe Beach and Son Tra are outdoor. Han Market and Cham Museum are indoor backups.\"\n  },\n  \"weather_data_quality\": {\n    \"missing_fields\": [],\n    \"confidence\": \"high\",\n    \"notes\": [\n      \"Live data fetched from Open-Meteo API.\",\n      \"Fetched at 2026-06-10T02:16:28.869382Z\"\n    ]\n  },\n  \"prediction_engine_result\": {\n    \"domain\": \"tourism\",\n    \"prediction_summary\": \"Rain risk is high, heat risk is medium, and wind risk is low.\",\n    \"recommendation_summary\": \"Adjust outdoor activities based on the highest weather risk and keep suitable indoor backups.\",\n    \"risk_assessment\": {\n      \"rain_risk\": \"high\",\n      \"heat_risk\": \"medium\",\n      \"wind_risk\": \"low\",\n      \"trip_disruption_risk\": \"high\"\n    },\n    \"evidence\": [\n      \"Maximum rain probability: 92%\",\n      \"Maximum temperature: 36.5°C\",\n      \"Maximum wind speed: 15.1 km/h\"\n    ]\n  },\n  \"required_output_schema\": {\n    \"prediction\": \"string\",\n    \"recommendation\": \"string\",\n    \"explanation\": \"string\",\n    \"final_answer\": \"string\"\n  },\n  \"hard_rules\": [\n    \"Do not change risk levels.\",\n    \"Do not add typhoon, flood, or official warning unless present in input.\",\n    \"Base recommendations only on the provided evidence and context.\"\n  ]\n}"
+      }
+    ],
+    "response": {
+      "model": "nvidia/llama-3.1-nemotron-nano-8b-v1",
+      "content": "{\"prediction\": \"Rain risk is high, heat risk is medium, and wind risk is low.\", \"recommendation\": \"Adjust outdoor activities based on the highest weather risk and keep suitable indoor backups.\", \"explanation\": \"DRY RUN: no NIM endpoint was called.\", \"final_answer\": \"DRY RUN — Rain risk is high, heat risk is medium, and wind risk is low. (Adjust outdoor activities based on the highest weather risk and keep suitable indoor backups.)\"}",
+      "usage": {},
+      "latency_ms": 0,
+      "error": null,
+      "weather_source": "open_meteo_live (16.0544, 108.2022)"
+    },
+    "parsed_output": {
+      "prediction": "Rain risk is high, heat risk is medium, and wind risk is low.",
+      "recommendation": "Adjust outdoor activities based on the highest weather risk and keep suitable indoor backups.",
+      "explanation": "DRY RUN: no NIM endpoint was called.",
+      "final_answer": "DRY RUN — Rain risk is high, heat risk is medium, and wind risk is low. (Adjust outdoor activities based on the highest weather risk and keep suitable indoor backups.)"
+    },
+    "checks": {
+      "valid_json": true,
+      "required_fields_present": true,
+      "risk_preserved": true,
+      "hallucination_warning_count": 0,
+      "must_mention_score": 1
+    }
+  },
+  {
+    "case_id": "tourism_good_weather_001",
+    "description": "Da Nang good outdoor weather case.",
+    "model_key": "nemotron_nano_8b",
+    "model": "nvidia/llama-3.1-nemotron-nano-8b-v1",
+    "weather_source": "open_meteo_live (16.0544, 108.2022)",
+    "prediction_engine_result": {
+      "domain": "tourism",
+      "prediction_summary": "Rain risk is high, heat risk is medium, and wind risk is low.",
+      "recommendation_summary": "Adjust outdoor activities based on the highest weather risk and keep suitable indoor backups.",
+      "risk_assessment": {
+        "rain_risk": "high",
+        "heat_risk": "medium",
+        "wind_risk": "low",
+        "trip_disruption_risk": "high"
+      },
+      "evidence": [
+        "Maximum rain probability: 92%",
+        "Maximum temperature: 36.5°C",
+        "Maximum wind speed: 15.1 km/h"
+      ]
+    },
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are Weatherise, a weather-aware advisory system. Use the deterministic Prediction Engine result exactly. Do not overwrite risk_assessment. Do not invent weather data, warnings, or sources. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "{\n  \"task\": \"Generate a final Weatherise response for Path A.\",\n  \"domain\": \"tourism\",\n  \"intent\": \"travel_planning\",\n  \"raw_user_input\": \"Plan a relaxed outdoor day in Da Nang if the weather is good.\",\n  \"user_constraints\": [\n    \"prefer outdoor sightseeing\",\n    \"avoid rain\"\n  ],\n  \"knowledge_context\": {\n    \"tourist_attractions\": \"My Khe Beach and Son Tra are outdoor. Han Market and Cham Museum are indoor backups.\"\n  },\n  \"weather_data_quality\": {\n    \"missing_fields\": [],\n    \"confidence\": \"high\",\n    \"notes\": [\n      \"Live data fetched from Open-Meteo API.\",\n      \"Fetched at 2026-06-10T02:16:29.729569Z\"\n    ]\n  },\n  \"prediction_engine_result\": {\n    \"domain\": \"tourism\",\n    \"prediction_summary\": \"Rain risk is high, heat risk is medium, and wind risk is low.\",\n    \"recommendation_summary\": \"Adjust outdoor activities based on the highest weather risk and keep suitable indoor backups.\",\n    \"risk_assessment\": {\n      \"rain_risk\": \"high\",\n      \"heat_risk\": \"medium\",\n      \"wind_risk\": \"low\",\n      \"trip_disruption_risk\": \"high\"\n    },\n    \"evidence\": [\n      \"Maximum rain probability: 92%\",\n      \"Maximum temperature: 36.5°C\",\n      \"Maximum wind speed: 15.1 km/h\"\n    ]\n  },\n  \"required_output_schema\": {\n    \"prediction\": \"string\",\n    \"recommendation\": \"string\",\n    \"explanation\": \"string\",\n    \"final_answer\": \"string\"\n  },\n  \"hard_rules\": [\n    \"Do not change risk levels.\",\n    \"Do not add typhoon, flood, or official warning unless present in input.\",\n    \"Base recommendations only on the provided evidence and context.\"\n  ]\n}"
+      }
+    ],
+    "response": {
+      "model": "nvidia/llama-3.1-nemotron-nano-8b-v1",
+      "content": "{\"prediction\": \"Rain risk is high, heat risk is medium, and wind risk is low.\", \"recommendation\": \"Adjust outdoor activities based on the highest weather risk and keep suitable indoor backups.\", \"explanation\": \"DRY RUN: no NIM endpoint was called.\", \"final_answer\": \"DRY RUN — Rain risk is high, heat risk is medium, and wind risk is low. (Adjust outdoor activities based on the highest weather risk and keep suitable indoor backups.)\"}",
+      "usage": {},
+      "latency_ms": 0,
+      "error": null,
+      "weather_source": "open_meteo_live (16.0544, 108.2022)"
+    },
+    "parsed_output": {
+      "prediction": "Rain risk is high, heat risk is medium, and wind risk is low.",
+      "recommendation": "Adjust outdoor activities based on the highest weather risk and keep suitable indoor backups.",
+      "explanation": "DRY RUN: no NIM endpoint was called.",
+      "final_answer": "DRY RUN — Rain risk is high, heat risk is medium, and wind risk is low. (Adjust outdoor activities based on the highest weather risk and keep suitable indoor backups.)"
+    },
+    "checks": {
+      "valid_json": true,
+      "required_fields_present": true,
+      "risk_preserved": true,
+      "hallucination_warning_count": 0,
+      "must_mention_score": 2
+    }
+  }
+]
