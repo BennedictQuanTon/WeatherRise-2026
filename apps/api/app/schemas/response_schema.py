@@ -30,6 +30,10 @@ class TripDay(BaseModel):
     primary_area: Optional[str] = None
     stops: List[TripStop] = []
     backup_options: List[Dict[str, Any]] = []
+    date: Optional[str] = None
+    weather_condition: Optional[str] = None
+    temp_range: Optional[str] = None
+    rain_prob: Optional[float] = None
 
 
 class TripPlan(BaseModel):
@@ -52,3 +56,7 @@ class ChatResponse(BaseModel):
     final_answer: Optional[str] = None
     trip_plan: Optional[TripPlan] = None  # V3: populated for trip planning queries
     error: Optional[str] = None
+    coordinates: Optional[Dict[str, float]] = None
+    evidence: Optional[List[str]] = None
+    weather_stats: Optional[Dict[str, Any]] = None
+    time_range: Optional[Dict[str, str]] = None

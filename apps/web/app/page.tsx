@@ -54,6 +54,10 @@ interface TripDay {
   primary_area?: string;
   stops: TripStop[];
   backup_options?: any[];
+  date?: string;
+  weather_condition?: string;
+  temp_range?: string;
+  rain_prob?: number;
 }
 
 interface TripPlan {
@@ -75,6 +79,10 @@ interface ChatResult {
   trip_plan?: TripPlan;
   error?: string;
   status?: string;
+  coordinates?: { latitude: number; longitude: number } | null;
+  evidence?: string[];
+  weather_stats?: Record<string, any>;
+  time_range?: { start: string; end: string; raw_text?: string };
 }
 
 interface CityWeather {
@@ -251,7 +259,7 @@ function StepIndicator({ steps }: { steps: string[] }) {
   );
 }
 
-function RiskBadge({ label, value, Icon }: { label: string; value: string; Icon: any }) {
+function RiskBadge({ label, value, Icon, detail }: { label: string; value: string; Icon: any; detail?: string }) {
   const color = riskColor(value);
   const bg = riskBg(value);
   return (
@@ -259,7 +267,8 @@ function RiskBadge({ label, value, Icon }: { label: string; value: string; Icon:
       style={{ background: bg }}>
       <Icon size={16} style={{ color }} />
       <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">{label}</span>
-      <span className="text-[12px] font-bold" style={{ color }}>{value?.toUpperCase() ?? "N/A"}</span>
+      <span className="text-[12px] font-bold animate-pulse-subtle" style={{ color }}>{value?.toUpperCase() ?? "N/A"}</span>
+      {detail && <span className="text-[9px] text-[var(--color-text-secondary)] mt-0.5">{detail}</span>}
     </div>
   );
 }
@@ -271,6 +280,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [steps, setSteps] = useState<string[]>([]);
   const [latestResult, setLatestResult] = useState<ChatResult | null>(null);
+  const [activeDay, setActiveDay] = useState(1);
   const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [showMap, setShowMap] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -348,6 +358,7 @@ export default function HomePage() {
     setLoading(true);
     setSteps(["Initializing parser agent..."]);
     setLatestResult(null);
+    setActiveDay(1);
     setQuery(text);
     setInput("");
 
@@ -372,6 +383,7 @@ export default function HomePage() {
               setSteps(prev => [...prev, ev.data?.message ?? ev.step]);
             } else if (ev.type === "result") {
               setLatestResult(ev.data);
+              setActiveDay(1);
               if (ev.data?.trip_plan) setShowMap(true);
               ws.close();
               resolve();
@@ -395,6 +407,7 @@ export default function HomePage() {
         });
         const data: ChatResult = await r.json();
         setLatestResult(data);
+        setActiveDay(1);
         if (data?.trip_plan) setShowMap(true);
       } catch (err: any) {
         setLatestResult({ error: "Cannot reach API server." });
@@ -574,205 +587,319 @@ export default function HomePage() {
             </div>
           </div>
         ) : (
-          /* ACTIVE / CHAT VIEW — V3 Split Layout */
-          <div className={`animate-[fadeIn_0.3s_ease] flex flex-col gap-0 ${
-            showMap && latestResult?.trip_plan
-              ? "h-[calc(100vh-120px)]"
-              : ""
-          }`}>
+          /* ACTIVE / CHAT VIEW — V3: Left Output Canvas | Right Composer + Small Map */
+          <div className="animate-[fadeIn_0.3s_ease] flex flex-col h-[calc(100vh-130px)]">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-0">
 
-            {/* Top row: always visible */}
-            <div className={`grid gap-6 ${
-              showMap && latestResult?.trip_plan
-                ? "grid-cols-1 lg:grid-cols-3 h-[38%] min-h-[280px]"
-                : "grid-cols-1 lg:grid-cols-12"
-            } items-start`}>
+              {/* ── LEFT: Large Output Canvas ─────────────────────── */}
+              {(() => {
+                const overallRisk = latestResult?.risk_assessment?.overall_risk?.toLowerCase() ?? "";
+                const dynamicBorder = overallRisk === "high" 
+                  ? "rgba(239, 68, 68, 0.25)" 
+                  : overallRisk === "medium" 
+                  ? "rgba(245, 158, 11, 0.22)" 
+                  : "var(--color-border)";
+                const dynamicBg = overallRisk === "high"
+                  ? "radial-gradient(ellipse at 50% 0%, rgba(239, 68, 68, 0.08) 0%, var(--bg-secondary) 80%)"
+                  : overallRisk === "medium"
+                  ? "radial-gradient(ellipse at 50% 0%, rgba(245, 158, 11, 0.06) 0%, var(--bg-secondary) 80%)"
+                  : "radial-gradient(ellipse at 50% 0%, rgba(34, 211, 238, 0.04) 0%, var(--bg-secondary) 80%)";
 
-              {/* ── Left / Chat result pane ─── */}
-              <div className={`${
-                showMap && latestResult?.trip_plan
-                  ? "lg:col-span-1 h-full overflow-y-auto"
-                  : "lg:col-span-7"
-              } rounded-2xl border border-[var(--color-border)] bg-[var(--bg-secondary)] p-5 shadow-xl space-y-4`}>
-              {/* Header */}
-              <div className="flex items-center justify-between border-b border-[var(--color-border-subtle)] pb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "var(--color-brand-gradient)" }}>
-                    <CloudLightning size={13} className="text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-bold leading-none">Weatherise</h3>
-                    <p className="text-[9px] text-[var(--color-text-muted)] mt-0.5">Weather Risk Intelligence</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950/30 border border-emerald-900/40 text-[9px] text-emerald-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Live
-                </div>
-              </div>
+                return (
+                  <div 
+                    style={{ border: `1px solid ${dynamicBorder}`, background: dynamicBg }}
+                    className="rounded-2xl p-5 shadow-xl overflow-y-auto flex flex-col gap-4 min-h-0"
+                  >
 
-              {/* Loader / Thinking view */}
-              {loading && (
-                <div className="py-8 text-center space-y-4">
-                  <Loader2 size={24} className="animate-spin text-[var(--color-brand)] mx-auto" />
-                  <p className="text-xs text-[var(--color-text-secondary)]">Analyzing input & evaluating risk factors...</p>
-                  <StepIndicator steps={steps} />
-                </div>
-              )}
-
-              {/* Actual Result view */}
-              {latestResult && (
-                <div className="space-y-5">
-                  {/* Badges bar */}
-                  <div className="flex items-center justify-between flex-wrap gap-2 text-[10px] text-[var(--color-text-muted)]">
-                    <div className="flex items-center gap-2">
-                      {latestResult.domain && (
-                        <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[var(--bg-tertiary)] border border-[var(--color-border-subtle)] text-[var(--color-brand)]">
-                          {DOMAIN_ICONS[latestResult.domain] ?? "🌐"} {latestResult.domain}
-                        </span>
-                      )}
-                      {latestResult.location && (
-                        <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[var(--bg-tertiary)] border border-[var(--color-border-subtle)]">
-                          <MapPin size={10} /> {latestResult.location}
-                        </span>
-                      )}
+                    {/* Header */}
+                    <div className="flex items-center justify-between border-b border-[var(--color-border-subtle)] pb-4 flex-shrink-0">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "var(--color-brand-gradient)" }}>
+                          <CloudLightning size={13} className="text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-xs font-bold leading-none">Weatherise</h3>
+                          <p className="text-[9px] text-[var(--color-text-muted)] mt-0.5">Weather Risk Intelligence</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950/30 border border-emerald-900/40 text-[9px] text-emerald-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        Live
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span>Updated {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · Live</span>
+
+                {/* Loading */}
+                {loading && (
+                  <div className="py-8 text-center space-y-4">
+                    <Loader2 size={24} className="animate-spin text-[var(--color-brand)] mx-auto" />
+                    <p className="text-xs text-[var(--color-text-secondary)]">Analyzing input & evaluating risk factors...</p>
+                    <StepIndicator steps={steps} />
+                  </div>
+                )}
+
+                {/* Result */}
+                {latestResult && (
+                  <div className="space-y-5">
+                    {/* Badges */}
+                    <div className="flex items-center justify-between flex-wrap gap-2 text-[10px] text-[var(--color-text-muted)]">
+                      <div className="flex items-center gap-2">
+                        {latestResult.domain && (
+                          <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[var(--bg-tertiary)] border border-[var(--color-border-subtle)] text-[var(--color-brand)]">
+                            {DOMAIN_ICONS[latestResult.domain] ?? "🌐"} {latestResult.domain}
+                          </span>
+                        )}
+                        {latestResult.location && (
+                          <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[var(--bg-tertiary)] border border-[var(--color-border-subtle)]">
+                            <MapPin size={10} /> {latestResult.location}
+                          </span>
+                        )}
+                      </div>
                       <span className="font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider"
                         style={{
                           color: riskColor(latestResult.risk_assessment?.overall_risk ?? "unknown"),
-                          background: riskBg(latestResult.risk_assessment?.overall_risk ?? "unknown")
+                          background: riskBg(latestResult.risk_assessment?.overall_risk ?? "unknown"),
                         }}>
                         {latestResult.risk_assessment?.overall_risk ?? "UNKNOWN"}
                       </span>
                     </div>
+
+                    {/* Heading */}
+                    {latestResult.location && (
+                      <h3 className="text-xl font-bold leading-snug text-[var(--color-text-primary)]">
+                        {latestResult.location} will likely experience{" "}
+                        {latestResult.risk_assessment?.rain_risk?.toLowerCase() === "high"
+                          ? "heavy rain"
+                          : "some weather conditions"}{" "}
+                        {latestResult.time_range?.raw_text ? latestResult.time_range.raw_text.toLowerCase() : "during this period"}.
+                      </h3>
+                    )}
+
+                    {/* Final answer */}
+                    {latestResult.final_answer && (
+                      <p className="text-sm text-[var(--color-text-card-secondary)] leading-relaxed">
+                        {latestResult.final_answer}
+                      </p>
+                    )}
+
+                    {/* Risk Cards */}
+                    {latestResult.risk_assessment && (
+                      <div className="flex gap-3">
+                        <RiskBadge 
+                          label="Rain" 
+                          value={latestResult.risk_assessment.rain_risk} 
+                          Icon={Droplets} 
+                          detail={latestResult.weather_stats?.max_rain_prob !== undefined ? `${latestResult.weather_stats.max_rain_prob}%` : undefined}
+                        />
+                        <RiskBadge 
+                          label="Wind" 
+                          value={latestResult.risk_assessment.wind_risk} 
+                          Icon={Wind} 
+                          detail={latestResult.weather_stats?.max_wind_speed !== undefined ? `${latestResult.weather_stats.max_wind_speed} km/h` : undefined}
+                        />
+                        <RiskBadge 
+                          label="Heat" 
+                          value={latestResult.risk_assessment.heat_risk} 
+                          Icon={Thermometer} 
+                          detail={latestResult.weather_stats?.max_temp !== undefined ? `${latestResult.weather_stats.max_temp}°C` : undefined}
+                        />
+                      </div>
+                    )}
+
+                    {/* Forecast */}
+                    {latestResult.prediction && (
+                      <div className="flex gap-3 p-3.5 rounded-xl border" style={{ background: "var(--box-cyan-bg)", borderColor: "var(--box-cyan-border)" }}>
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-cyan-950/20 text-[var(--box-cyan-label)] border border-[var(--box-cyan-border)]">
+                          <Calendar size={14} />
+                        </div>
+                        <div className="text-xs flex-1">
+                          <div className="font-bold flex items-center justify-between" style={{ color: "var(--box-cyan-label)" }}>
+                            <span>Forecast</span>
+                            {latestResult.time_range?.start && latestResult.time_range?.end && (
+                              <span className="text-[9px] font-medium px-2 py-0.5 rounded bg-cyan-950/40 text-cyan-300">
+                                Forecast: {latestResult.time_range.start} to {latestResult.time_range.end}
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-1 leading-relaxed" style={{ color: "var(--box-cyan-text)" }}>{latestResult.prediction}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Recommendation */}
+                    {latestResult.recommendation && (
+                      <div className="flex gap-3 p-3.5 rounded-xl border" style={{ background: "var(--box-emerald-bg)", borderColor: "var(--box-emerald-border)" }}>
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-emerald-950/20 text-[var(--box-emerald-label)] border border-[var(--box-emerald-border)]">
+                          <CheckCircle2 size={14} />
+                        </div>
+                        <div className="text-xs">
+                          <div className="font-bold" style={{ color: "var(--box-emerald-label)" }}>Recommendation</div>
+                          <p className="mt-1 leading-relaxed" style={{ color: "var(--box-emerald-text)" }}>{latestResult.recommendation}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Trip Plan Cards */}
+                    {latestResult.trip_plan && (
+                      <div className="space-y-3 pt-2 border-t border-[var(--color-border-subtle)]">
+                        <div className="flex items-center justify-between gap-2 text-xs font-bold text-[var(--color-text-primary)]">
+                          <div className="flex items-center gap-2">
+                            <Calendar size={12} className="text-[var(--color-brand)]" />
+                            {latestResult.trip_plan.duration_days}-Day Trip Plan · {latestResult.trip_plan.location}
+                          </div>
+                          {latestResult.trip_plan.weather_aware && (
+                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-950/30 text-cyan-400 border border-cyan-900/40">
+                              ⛅ Weather-Optimised
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Day Tabs */}
+                        {latestResult.trip_plan.days.length > 1 && (
+                          <div className="flex gap-1.5 border-b border-[var(--color-border-subtle)] pb-2 mb-1">
+                            {latestResult.trip_plan.days.map((d) => (
+                              <button
+                                key={d.day}
+                                onClick={() => setActiveDay(d.day)}
+                                className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all duration-200 ${
+                                  activeDay === d.day
+                                    ? "bg-cyan-500 text-slate-900 shadow-lg shadow-cyan-500/25"
+                                    : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
+                                }`}
+                              >
+                                Day {d.day}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {latestResult.trip_plan.days
+                          .filter((d) => d.day === activeDay)
+                          .map((day) => (
+                            <div key={day.day} className="rounded-xl border border-[var(--color-border-subtle)] bg-[var(--bg-primary)] p-3 space-y-2 animate-[fadeIn_0.25s_ease]">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 text-[10px] font-black flex items-center justify-center flex-shrink-0">{day.day}</span>
+                                  <span className="text-[10px] font-bold text-[var(--color-text-primary)]">{day.theme || `Day ${day.day}`}</span>
+                                  {day.primary_area && <span className="text-[9px] text-[var(--color-text-muted)]">· {day.primary_area}</span>}
+                                </div>
+                                {(day.date || day.weather_condition) && (
+                                  <span className="text-[9px] font-medium px-2 py-0.5 rounded bg-white/5 text-slate-300">
+                                    {day.date && `${day.date}`} {day.weather_condition && `· ${day.weather_condition}`}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="space-y-1.5">
+                                {day.stops.map((stop) => {
+                                  const blockColor: Record<string, string> = {
+                                    morning: "#22d3ee", lunch: "#f59e0b",
+                                    afternoon: "#818cf8", dinner: "#f97316", evening: "#a78bfa",
+                                  };
+                                  const col = blockColor[stop.time_block] || "#94a3b8";
+                                  const catIcon: Record<string, string> = { restaurant: "🍜", beach: "🏖️", cafe: "☕", market: "🛒" };
+                                  return (
+                                    <div key={stop.place_id} className="flex items-center gap-2 text-[10px] px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors">
+                                      <span style={{ color: col }} className="font-bold w-10 shrink-0 font-mono">{stop.planned_time}</span>
+                                      <span className="text-[9px] shrink-0">{catIcon[stop.category] || "📍"}</span>
+                                      <span className="text-[var(--color-text-secondary)] truncate flex-1">{stop.name}</span>
+                                      {stop.weather_condition && (
+                                        <span className="text-[9px] text-slate-400 max-w-[80px] truncate shrink-0">{stop.weather_condition}</span>
+                                      )}
+                                      <span className="text-[9px] shrink-0 px-1.5 py-0.5 rounded-full" style={{
+                                        background: stop.is_indoor ? "rgba(129,140,248,0.15)" : "rgba(34,211,238,0.12)",
+                                        color: stop.is_indoor ? "#818cf8" : "#22d3ee",
+                                      }}>
+                                        {stop.is_indoor ? "🏠" : "🌤"}
+                                      </span>
+                                      {stop.forecast_temp != null && (
+                                        <span className="text-amber-400 text-[9px] shrink-0">🌡{stop.forecast_temp}°C</span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+
+                    {/* Explanation */}
+                    {latestResult.explanation && (
+                      <p className="text-[10px] text-[var(--color-text-card-muted)] italic leading-relaxed pt-2 border-t border-[var(--color-border-subtle)]">
+                        {latestResult.explanation}
+                      </p>
+                    )}
+
+                    {/* Error */}
+                    {latestResult.error && (
+                      <div className="flex items-center gap-2 text-xs text-red-400 bg-red-950/20 border border-red-900/30 rounded-xl p-3.5">
+                        <AlertTriangle size={14} /> {latestResult.error}
+                      </div>
+                    )}
                   </div>
+                )}
+              </div>
+            );
+          })()}
 
-                  {/* Heading Summary */}
-                  {latestResult.location && (
-                    <h3 className="text-lg md:text-xl font-bold leading-snug text-[var(--color-text-primary)]">
-                      {latestResult.location} will likely experience {latestResult.risk_assessment?.rain_risk?.toLowerCase() === "high" ? "heavy rain" : "some weather conditions"} next week.
-                    </h3>
-                  )}
+              {/* ── RIGHT: Composer (top) + Small Map (bottom ¼) ─── */}
+              <div className="flex flex-col gap-4 min-h-0">
 
-                  {/* Final answer / Description */}
-                  {latestResult.final_answer && (
-                    <p className="text-xs md:text-sm text-[var(--color-text-card-secondary)] leading-relaxed">{latestResult.final_answer}</p>
-                  )}
-
-                  {/* Risk Cards */}
-                  {latestResult.risk_assessment && (
-                    <div className="flex gap-3 pt-2">
-                      <RiskBadge label="Rain" value={latestResult.risk_assessment.rain_risk} Icon={Droplets} />
-                      <RiskBadge label="Wind" value={latestResult.risk_assessment.wind_risk} Icon={Wind} />
-                      <RiskBadge label="Heat" value={latestResult.risk_assessment.heat_risk} Icon={Thermometer} />
-                    </div>
-                  )}
-
-                  {/* Forecast Box */}
-                  {latestResult.prediction && (
-                    <div className="flex gap-3 p-3.5 rounded-xl border" style={{ background: "var(--box-cyan-bg)", borderColor: "var(--box-cyan-border)" }}>
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-cyan-950/20 text-[var(--box-cyan-label)] border border-[var(--box-cyan-border)]">
-                        <Calendar size={14} />
-                      </div>
-                      <div className="text-xs">
-                        <div className="font-bold" style={{ color: "var(--box-cyan-label)" }}>Forecast</div>
-                        <p className="mt-1 leading-relaxed" style={{ color: "var(--box-cyan-text)" }}>{latestResult.prediction}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Recommendation Box */}
-                  {latestResult.recommendation && (
-                    <div className="flex gap-3 p-3.5 rounded-xl border" style={{ background: "var(--box-emerald-bg)", borderColor: "var(--box-emerald-border)" }}>
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-emerald-950/20 text-[var(--box-emerald-label)] border border-[var(--box-emerald-border)]">
-                        <CheckCircle2 size={14} />
-                      </div>
-                      <div className="text-xs">
-                        <div className="font-bold" style={{ color: "var(--box-emerald-label)" }}>Recommendation</div>
-                        <p className="mt-1 leading-relaxed" style={{ color: "var(--box-emerald-text)" }}>{latestResult.recommendation}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Explanation / Italics */}
-                  {latestResult.explanation && (
-                    <p className="text-[10px] text-[var(--color-text-card-muted)] italic leading-relaxed pt-2 border-t border-[var(--color-border-subtle)]">
-                      {latestResult.explanation}
-                    </p>
-                  )}
-
-                  {/* Error Box */}
-                  {latestResult.error && (
-                    <div className="flex items-center gap-2 text-xs text-red-400 bg-red-950/20 border border-red-900/30 rounded-xl p-3.5">
-                      <AlertTriangle size={14} />
-                      {latestResult.error}
-                    </div>
-                  )}
+                {/* Query Composer */}
+                <div className="flex-1 rounded-2xl border border-[var(--color-border)] bg-[var(--bg-secondary)] p-5 shadow-xl space-y-4 overflow-y-auto min-h-0">
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-brand)]">What would you like to know?</h3>
+                    <p className="text-[10px] text-[var(--color-text-muted)] mt-1">Get intelligent weather risk insights for your plans.</p>
+                  </div>
+                  <div className="relative rounded-xl border border-[var(--color-border)] bg-[var(--bg-primary)] p-3 focus-within:border-[var(--color-brand)] transition-colors">
+                    <textarea
+                      rows={4}
+                      value={input}
+                      onChange={e => setInput(e.target.value)}
+                      onKeyDown={handleKey}
+                      placeholder="e.g. Plan a 3-day trip to Da Nang next week..."
+                      disabled={loading}
+                      maxLength={300}
+                      className="w-full bg-transparent text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] resize-none outline-none leading-relaxed"
+                    />
+                    <div className="text-[10px] text-[var(--color-text-muted)] text-right mt-1">{input.length} / 300</div>
+                  </div>
+                  <div className="flex justify-end">
+                    <button onClick={() => sendMessage(input)} disabled={!input.trim() || loading}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-xs text-white bg-[var(--color-brand)] hover:scale-[1.02] disabled:opacity-40 transition-all shadow-md">
+                      <Sparkles size={12} /> Generate
+                    </button>
+                  </div>
+                  <div className="pt-1 text-center text-[10px] text-[var(--color-text-muted)] border-t border-[var(--color-border-subtle)] pt-3">Weatherise AI • Powered by NVIDIA NIM</div>
                 </div>
-              )}
-            </div>
-            {/* Right Pane: Query Composer */}
-            <div className={`${
-              showMap && latestResult?.trip_plan ? "lg:col-span-2 h-full overflow-y-auto" : "lg:col-span-5"
-            } rounded-2xl border border-[var(--color-border)] bg-[var(--bg-secondary)] p-5 shadow-xl space-y-4`}>
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-brand)]">What would you like to know?</h3>
-                <p className="text-[10px] text-[var(--color-text-muted)] mt-1">Get intelligent weather risk insights for your plans.</p>
-              </div>
-              <div className="relative rounded-xl border border-[var(--color-border)] bg-[var(--bg-primary)] p-3 focus-within:border-[var(--color-brand)] transition-colors">
-                <textarea
-                  rows={5}
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={handleKey}
-                  placeholder="e.g. Plan a 3-day trip to Da Nang next week..."
-                  disabled={loading}
-                  maxLength={300}
-                  className="w-full bg-transparent text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] resize-none outline-none leading-relaxed"
-                />
-                <div className="text-[10px] text-[var(--color-text-muted)] text-right mt-1">{input.length} / 300</div>
-              </div>
-              <div className="flex justify-end">
-                <button onClick={() => sendMessage(input)} disabled={!input.trim() || loading}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-xs text-white bg-[var(--color-brand)] hover:scale-[1.02] disabled:opacity-40 transition-all shadow-md">
-                  <Sparkles size={12} /> Generate
-                </button>
-              </div>
-              <div className="space-y-2 pt-3 border-t border-[var(--color-border-subtle)]">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)]">Example prompts</span>
-                {[
-                  "Plan a 3-day trip to Da Nang next week and avoid heavy rain",
-                  "Is it safe to go hiking in Sa Pa this weekend?",
-                ].map((p, idx) => (
-                  <button key={idx} onClick={() => setInput(p)}
-                    className="w-full text-left flex items-start gap-2 px-3 py-2 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--bg-primary)] hover:border-[var(--color-brand)] text-[10px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-all">
-                    <CloudLightning size={10} className="text-[var(--color-brand)] shrink-0 mt-0.5" />
-                    <span className="leading-snug">{p}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="pt-1 text-center text-[10px] text-[var(--color-text-muted)]">Weatherise AI • Powered by NVIDIA NIM</div>
-            </div>
+
+                {/* Small Map — 1/4 of right column (fixed 260px) */}
+                <div className="h-[260px] rounded-2xl border border-[var(--color-border)] bg-[var(--bg-secondary)] shadow-xl overflow-hidden flex-shrink-0">
+                  <div className="flex items-center gap-2 px-4 py-2 border-b border-white/10 bg-slate-900/40">
+                    <Map size={11} className="text-cyan-400" />
+                    <span className="text-[10px] font-bold text-slate-200">
+                      {latestResult?.trip_plan ? `Trip Map · ${latestResult.trip_plan.location}` : latestResult?.location ? `Location · ${latestResult.location}` : "Map"}
+                    </span>
+                    {latestResult?.trip_plan && (
+                      <span className="ml-auto text-[9px] text-slate-500">
+                        {latestResult.trip_plan.duration_days} days
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ height: "218px" }}>
+                    <TripMapPanel 
+                      tripPlan={latestResult?.trip_plan} 
+                      coordinates={latestResult?.coordinates}
+                      locationName={latestResult?.location}
+                      activeDay={activeDay}
+                    />
+                  </div>
+                </div>
+
+              </div>{/* end right column */}
             </div>{/* end grid */}
-
-            {/* Trip Map Panel */}
-            {showMap && latestResult?.trip_plan && (
-              <div className="mt-4 rounded-2xl border border-[var(--color-border)] bg-[var(--bg-secondary)] shadow-xl overflow-hidden" style={{ height: "520px" }}>
-                <div className="flex items-center gap-3 px-5 py-3 border-b border-white/10">
-                  <Map size={14} className="text-cyan-400" />
-                  <span className="text-xs font-bold text-slate-200">Bản đồ lịch trình — {latestResult.trip_plan.location}</span>
-                  <span className="ml-auto text-[10px] text-slate-500">{latestResult.trip_plan.duration_days} ngày</span>
-                  <button onClick={() => setShowMap(false)} className="text-[10px] text-slate-500 hover:text-white px-2 py-1 rounded-lg hover:bg-white/5 transition-colors">✕ Ẩn map</button>
-                </div>
-                <div style={{ height: "472px" }}>
-                  <TripMapPanel tripPlan={latestResult.trip_plan} />
-                </div>
-              </div>
-            )}
           </div>
         )}
+
       </main>
     </div>
   );

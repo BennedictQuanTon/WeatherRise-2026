@@ -90,6 +90,8 @@ services:
   vector-db:
     image: qdrant/qdrant:latest
     container_name: weatherise-qdrant
+    ports:
+      - "6333:6333"
     volumes:
       - /raid/team/weatherise/vector_db:/qdrant/storage
     restart: unless-stopped
@@ -98,6 +100,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
 
   # ── Redis ───────────────────────────────────────────────────
   redis:
@@ -124,6 +127,7 @@ services:
     volumes:
       - /raid/team/weatherise/postgres_v3:/var/lib/postgresql/data
       - ../storage/postgres/locations_schema.sql:/docker-entrypoint-initdb.d/001_locations_schema.sql:ro
+      - ../storage/postgres/context_observability_tables.sql:/docker-entrypoint-initdb.d/002_observability.sql:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U weatherise"]

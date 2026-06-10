@@ -47,9 +47,11 @@ async def resolve_time_range(req: TimeRequest):
         elif "this week" in raw:
             start = now.strftime("%Y-%m-%d")
             end = (now + timedelta(days=7)).strftime("%Y-%m-%d")
-        elif "next week" in raw:
-            start = (now + timedelta(days=7)).strftime("%Y-%m-%d")
-            end = (now + timedelta(days=14)).strftime("%Y-%m-%d")
+        elif "next week" in raw or "tuần sau" in raw:
+            days_to_monday = 7 - now.weekday()
+            start_dt = now + timedelta(days=days_to_monday)
+            start = start_dt.strftime("%Y-%m-%d")
+            end = (start_dt + timedelta(days=6)).strftime("%Y-%m-%d")
         elif "this weekend" in raw:
             days_to_sat = (5 - now.weekday()) % 7
             start = (now + timedelta(days=days_to_sat)).strftime("%Y-%m-%d")

@@ -12,6 +12,7 @@ from mcp.server.routes import (
     time_router,
     domain_router,
     map_router,
+    weather_router,
 )
 
 app = FastAPI(
@@ -33,6 +34,7 @@ app.include_router(restaurant_router, prefix="/tools/place", tags=["Restaurant"]
 app.include_router(time_router, prefix="/tools/time", tags=["Time"])
 app.include_router(domain_router, prefix="/tools/domain", tags=["Domain"])
 app.include_router(map_router, prefix="/tools/map", tags=["Map"])
+app.include_router(weather_router, prefix="/tools/weather", tags=["Weather"])
 
 
 @app.get("/health")

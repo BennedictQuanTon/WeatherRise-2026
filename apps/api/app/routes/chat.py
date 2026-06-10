@@ -130,6 +130,10 @@ async def chat(request: ChatRequest):
             explanation=result.get("explanation"),
             final_answer=result.get("final_answer"),
             trip_plan=trip_plan,
+            coordinates=result.get("coordinates"),
+            evidence=result.get("evidence"),
+            weather_stats=result.get("weather_stats"),
+            time_range=result.get("time_range"),
         )
     except Exception as e:
         return ChatResponse(

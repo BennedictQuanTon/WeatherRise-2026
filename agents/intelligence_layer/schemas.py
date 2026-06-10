@@ -99,6 +99,7 @@ class PredictionResult(BaseModel):
     risk_assessment: dict[str, RiskLevel]
     evidence: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
+    weather_stats: dict[str, Any] = Field(default_factory=dict)
 
 
 # ── NIM Response ─────────────────────────────────────────────

@@ -60,6 +60,10 @@ def _extract_trip_plan(processed) -> Optional[TripPlan]:
                 primary_area=d.get("primary_area", "Da Nang"),
                 stops=stops,
                 backup_options=d.get("backup_options", []),
+                date=d.get("date"),
+                weather_condition=d.get("weather_condition"),
+                temp_range=d.get("temp_range"),
+                rain_prob=d.get("rain_prob"),
             ))
 
         return TripPlan(
@@ -111,6 +115,28 @@ async def run_pipeline(raw_input: str, session_id: str) -> Dict[str, Any]:
     emit("success", "Pipeline",
          f"✅ Complete in {total_ms}ms | domain={processed.domain} | trip={trip_plan is not None}", total_ms)
 
+    coordinates = None
+    if hasattr(processed, "geographical_location") and processed.geographical_location:
+        coords = processed.geographical_location.coordinates
+        if isinstance(coords, dict):
+            coordinates = coords
+        elif hasattr(coords, "model_dump"):
+            coordinates = coords.model_dump()
+    if not coordinates and hasattr(processed, "mcp_context") and processed.mcp_context:
+        c_dict = processed.mcp_context if isinstance(processed.mcp_context, dict) else processed.mcp_context.model_dump()
+        coordinates = c_dict.get("coordinates")
+
+    evidence = result.metadata.get("evidence") if result.metadata else None
+    weather_stats = result.metadata.get("weather_stats") if result.metadata else None
+
+    time_range = None
+    if hasattr(processed, "time_range") and processed.time_range:
+        tr = processed.time_range
+        time_range = {
+            "start": tr.start if hasattr(tr, "start") else getattr(tr, "get")("start"),
+            "end": tr.end if hasattr(tr, "end") else getattr(tr, "get")("end"),
+        }
+
     return {
         "domain": processed.domain,
         "location": processed.location,
@@ -122,6 +148,10 @@ async def run_pipeline(raw_input: str, session_id: str) -> Dict[str, Any]:
         "final_answer": result.final_answer,
         "metadata": result.metadata,
         "trip_plan": trip_plan.model_dump() if trip_plan else None,
+        "coordinates": coordinates,
+        "evidence": evidence,
+        "weather_stats": weather_stats,
+        "time_range": time_range,
     }
 
 
@@ -163,6 +193,28 @@ async def run_pipeline_streaming(
     total_ms = round((time.time() - pipeline_start) * 1000)
     emit("success", "Pipeline", f"✅ WS complete in {total_ms}ms", total_ms)
 
+    coordinates = None
+    if hasattr(processed, "geographical_location") and processed.geographical_location:
+        coords = processed.geographical_location.coordinates
+        if isinstance(coords, dict):
+            coordinates = coords
+        elif hasattr(coords, "model_dump"):
+            coordinates = coords.model_dump()
+    if not coordinates and hasattr(processed, "mcp_context") and processed.mcp_context:
+        c_dict = processed.mcp_context if isinstance(processed.mcp_context, dict) else processed.mcp_context.model_dump()
+        coordinates = c_dict.get("coordinates")
+
+    evidence = result.metadata.get("evidence") if result.metadata else None
+    weather_stats = result.metadata.get("weather_stats") if result.metadata else None
+
+    time_range = None
+    if hasattr(processed, "time_range") and processed.time_range:
+        tr = processed.time_range
+        time_range = {
+            "start": tr.start if hasattr(tr, "start") else getattr(tr, "get")("start"),
+            "end": tr.end if hasattr(tr, "end") else getattr(tr, "get")("end"),
+        }
+
     yield {
         "type": "result",
         "data": {
@@ -176,5 +228,9 @@ async def run_pipeline_streaming(
             "final_answer": result.final_answer,
             "metadata": result.metadata,
             "trip_plan": trip_plan.model_dump() if trip_plan else None,
+            "coordinates": coordinates,
+            "evidence": evidence,
+            "weather_stats": weather_stats,
+            "time_range": time_range,
         }
     }

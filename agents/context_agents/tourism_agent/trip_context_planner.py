@@ -165,22 +165,22 @@ def build_trip_plan(
 
         # Backup options: indoor alternatives
         backup_options = [
-            {"place_id": "danang_cham_museum", "name": "Bảo tàng Chăm", "reason": "Indoor backup"},
-            {"place_id": "danang_han_market", "name": "Chợ Hàn", "reason": "Indoor backup"},
+            {"place_id": "danang_cham_museum", "name": "Cham Museum", "reason": "Indoor backup"},
+            {"place_id": "danang_han_market", "name": "Han Market", "reason": "Indoor backup"},
         ]
 
         # Theme per day based on dominant area
-        theme = "Khám phá Đà Nẵng"
+        theme = "Explore Da Nang"
         if day_attractions:
             tags = []
             for a in day_attractions:
                 tags.extend(a.get("vibe_tags", []))
             if "beach" in tags:
-                theme = "Biển & Hải sản"
+                theme = "Beach & Seafood"
             elif "museum" in tags or "culture" in tags:
-                theme = "Văn hoá & Lịch sử"
+                theme = "Culture & History"
             elif "viewpoint" in tags or "mountain" in tags:
-                theme = "Ngắm cảnh & Thiên nhiên"
+                theme = "Sightseeing & Nature"
 
         days.append({
             "day": day_num,

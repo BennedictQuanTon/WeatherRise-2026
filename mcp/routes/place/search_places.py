@@ -1,70 +1,77 @@
 """
 MCP Route: place.searchPlaces
-Searches for places/POI using local seed data first, then OSM fallback.
-Cache: 7 days.
+Phase 3.5: Uses TourismRetriever 3-tier (Qdrant strict → relaxed → Overpass live).
+Returns V3 MCPResponseEnvelope.
 """
-import json
-import os
-from pathlib import Path
 from fastapi import APIRouter
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
+from mcp.routes.envelope import make_envelope
+from knowledge.retrievers.tourism_retriever import TourismRetriever
 
 router = APIRouter()
-
-# Load local seed data at startup
-_SEED_DIR = Path(__file__).parent.parent.parent.parent / "knowledge" / "seed_data"
-_CACHE: Dict[str, Any] = {}
-
-
-def _load_seed(domain: str, filename: str) -> List[Dict]:
-    path = _SEED_DIR / domain / filename
-    if path.exists():
-        with open(path) as f:
-            return json.load(f)
-    return []
-
-
-_TOURISM_PLACES = _load_seed("tourism", "danang_locations.json")
-_CONSTRUCTION_SITES = _load_seed("construction", "danang_sites.json")
+_retriever = TourismRetriever()
 
 
 class PlaceSearchRequest(BaseModel):
     location: str
+    lat: Optional[float] = None
+    lon: Optional[float] = None
     category: Optional[str] = "tourist_attraction"
-    limit: int = 10
+    limit: int = 20
 
 
 @router.post("/searchPlaces")
-async def search_places(req: PlaceSearchRequest):
-    location_lower = req.location.lower()
-    cat = req.category or "tourist_attraction"
+async def search_places(req: PlaceSearchRequest) -> Dict[str, Any]:
+    """
+    Search tourist attractions using 3-tier KB retrieval:
+      Tier 1 → Qdrant strict (score ≥ 0.72)
+      Tier 2 → Qdrant relaxed (score ≥ 0.50)
+      Tier 3 → Overpass OSM live fetch + async KB ingest
+    """
+    coordinates = {
+        "latitude": req.lat or 16.0544,
+        "longitude": req.lon or 108.2022,
+    }
 
-    # Tourism places from local seed
-    if "tourism" in cat or "tourist" in cat or "attraction" in cat:
-        city_match = [
-            p for p in _TOURISM_PLACES
-            if p.get("city", "").lower() in location_lower
-               or location_lower in p.get("city", "").lower()
-        ]
-        if city_match:
-            return {"results": city_match[:req.limit], "source": "local_seed"}
+    result = await _retriever.get_attractions(
+        location=req.location,
+        coordinates=coordinates,
+        limit=req.limit,
+    )
 
-    # Construction sites from local seed
-    if "construction" in cat:
-        return {"results": _CONSTRUCTION_SITES[:req.limit], "source": "local_seed"}
-
-    # Fallback: return empty (OSM integration can be added later)
-    return {"results": [], "source": "none", "note": "No local data for this location/category"}
+    return make_envelope(
+        route="place.searchPlaces",
+        context_type="tourist_attractions",
+        output={"attractions": result.data, "count": len(result.data)},
+        provider=result.source,
+        source_type="live" if result.source == "osm_live" else "static",
+        freshness="live" if result.source == "osm_live" else "cached",
+        input_data={"location": req.location, "lat": req.lat, "lon": req.lon, "limit": req.limit},
+        warnings=result.warnings,
+        errors=result.errors,
+    )
 
 
 @router.post("/getOpeningHours")
-async def get_opening_hours(req: PlaceSearchRequest):
-    """Get opening hours from local seed data."""
-    results = await search_places(req)
-    places = results.get("results", [])
-    hours = {}
-    for p in places:
-        pid = p.get("destination_id") or p.get("id", p.get("name", "unknown"))
-        hours[pid] = p.get("opening_hours", "9:00 AM – 5:00 PM (typical)")
-    return {"opening_hours": hours, "source": "local_seed"}
+async def get_opening_hours(req: PlaceSearchRequest) -> Dict[str, Any]:
+    """Return opening hours map {place_id: {day: hours}} from attraction data."""
+    result = await _retriever.get_attractions(
+        location=req.location,
+        coordinates={"latitude": req.lat or 16.0544, "longitude": req.lon or 108.2022},
+        limit=req.limit,
+    )
+    hours = {
+        p["place_id"]: p.get("opening_hours", {"default": "07:00-17:00"})
+        for p in result.data
+        if "place_id" in p
+    }
+    return make_envelope(
+        route="place.getOpeningHours",
+        context_type="opening_hours",
+        output={"opening_hours": hours, "count": len(hours)},
+        provider=result.source,
+        source_type="static",
+        freshness="seeded",
+        input_data={"location": req.location},
+    )
