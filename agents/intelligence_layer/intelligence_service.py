@@ -178,6 +178,15 @@ class IntelligenceService:
             if not coords:
                 coords = {"latitude": 16.0544, "longitude": 108.2022}
 
+            tr = payload_dict.get("time_range", {}) or {}
+            tr_start = tr.get("start")
+            tr_end = tr.get("end")
+            if not tr_start or not tr_end:
+                from datetime import datetime, timedelta
+                now = datetime.now()
+                tr_start = tr_start or now.strftime("%Y-%m-%d")
+                tr_end = tr_end or (now + timedelta(days=3)).strftime("%Y-%m-%d")
+
             fp = FullyProcessedJSON(
                 domain=payload_dict.get("domain", "tourism"),
                 intent=payload_dict.get("intent", "general"),
@@ -187,11 +196,12 @@ class IntelligenceService:
                     "city": geo.get("city"),
                     "coordinates": coords,
                 },
-                time_range=payload_dict.get("time_range", {
-                    "start": "2026-06-15",
-                    "end": "2026-06-17",
-                    "timezone": "Asia/Ho_Chi_Minh",
-                }),
+                time_range={
+                    "raw_text": tr.get("raw_text"),
+                    "start": tr_start,
+                    "end": tr_end,
+                    "timezone": tr.get("timezone") or "Asia/Ho_Chi_Minh",
+                },
                 involved_context=payload_dict.get("involved_context", []),
                 knowledge_context=self._extract_knowledge_context(payload_dict),
                 mcp_context=self._extract_mcp_context(payload_dict),

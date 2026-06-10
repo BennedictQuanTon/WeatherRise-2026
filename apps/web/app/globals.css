@@ -4,29 +4,101 @@
 @tailwind utilities;
 
 :root {
+  /* Dark theme variables (Default) */
+  --bg-primary: #070c1a;
+  --bg-secondary: rgba(13, 21, 48, 0.8);
+  --bg-tertiary: rgba(255, 255, 255, 0.03);
+  --bg-tertiary-hover: rgba(255, 255, 255, 0.08);
+  --color-border: rgba(0, 229, 255, 0.12);
+  --color-border-subtle: rgba(255, 255, 255, 0.06);
+  --color-text-primary: #e8f4f8;
+  --color-text-secondary: #8ba3b0;
+  --color-text-muted: #546e7a;
+  
   --color-brand: #00e5ff;
   --color-brand-dim: #0097a7;
-  --color-surface: #0a0f1e;
-  --color-surface-2: #0d1530;
-  --color-surface-3: #111b3d;
-  --color-border: rgba(0, 229, 255, 0.12);
-  --color-text: #e8f4f8;
-  --color-text-dim: #8ba3b0;
+  --color-brand-gradient: linear-gradient(135deg, #00b4db, #0040ff);
+  
+  --bubble-user-bg: linear-gradient(135deg, #005f7a, #0044cc);
+  --bubble-user-border: rgba(0, 180, 255, 0.3);
+  --bubble-user-text: #ffffff;
+  --bubble-asst-bg: rgba(13, 21, 48, 0.85);
+  --bubble-asst-border: rgba(0, 229, 255, 0.08);
+
+  --sidebar-bg: #08101f;
+  --card-bg: rgba(255, 255, 255, 0.02);
+  --card-border: rgba(255, 255, 255, 0.04);
+
+  --color-text-card-primary: #e8f4f8;
+  --color-text-card-secondary: #cbd5e1;
+  --color-text-card-muted: #64748b;
+
+  --box-cyan-bg: rgba(0, 229, 255, 0.06);
+  --box-cyan-border: rgba(0, 229, 255, 0.12);
+  --box-cyan-text: #e0f7fa;
+  --box-cyan-label: #00e5ff;
+
+  --box-emerald-bg: rgba(0, 230, 118, 0.06);
+  --box-emerald-border: rgba(0, 230, 118, 0.12);
+  --box-emerald-text: #e8f5e9;
+  --box-emerald-label: #00e676;
+}
+
+html.light {
+  /* Light theme variables */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: rgba(0, 0, 0, 0.04);
+  --bg-tertiary-hover: rgba(0, 0, 0, 0.08);
+  --color-border: rgba(0, 119, 153, 0.25);
+  --color-border-subtle: rgba(0, 0, 0, 0.12);
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #334155;
+  --color-text-muted: #64748b;
+  
+  --color-brand: #007799;
+  --color-brand-dim: #005f7a;
+  --color-brand-gradient: linear-gradient(135deg, #007799, #0044cc);
+  
+  --bubble-user-bg: linear-gradient(135deg, #007799, #0044bb);
+  --bubble-user-border: rgba(0, 119, 153, 0.3);
+  --bubble-user-text: #ffffff;
+  --bubble-asst-bg: #ffffff;
+  --bubble-asst-border: rgba(0, 119, 153, 0.2);
+
+  --sidebar-bg: #f1f5f9;
+  --card-bg: rgba(0, 0, 0, 0.03);
+  --card-border: rgba(0, 0, 0, 0.08);
+
+  --color-text-card-primary: #0f172a;
+  --color-text-card-secondary: #334155;
+  --color-text-card-muted: #64748b;
+
+  --box-cyan-bg: rgba(0, 119, 153, 0.05);
+  --box-cyan-border: rgba(0, 119, 153, 0.18);
+  --box-cyan-text: #0f172a;
+  --box-cyan-label: #006688;
+
+  --box-emerald-bg: rgba(0, 150, 80, 0.05);
+  --box-emerald-border: rgba(0, 150, 80, 0.18);
+  --box-emerald-text: #0f172a;
+  --box-emerald-label: #008040;
 }
 
 * { box-sizing: border-box; }
 
 html, body {
-  background: var(--color-surface);
-  color: var(--color-text);
+  background: var(--bg-primary);
+  color: var(--color-text-primary);
   min-height: 100vh;
   scroll-behavior: smooth;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 body {
-  background: radial-gradient(ellipse at 20% 0%, rgba(0,80,120,0.25) 0%, transparent 60%),
-              radial-gradient(ellipse at 80% 100%, rgba(0,180,255,0.1) 0%, transparent 50%),
-              var(--color-surface);
+  background: radial-gradient(ellipse at 20% 0%, rgba(0, 80, 120, 0.12) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 100%, rgba(0, 180, 255, 0.05) 0%, transparent 50%),
+              var(--bg-primary);
 }
 
 /* Scrollbar */
@@ -37,7 +109,7 @@ body {
 
 /* Glass card */
 .glass {
-  background: rgba(13, 21, 48, 0.7);
+  background: var(--bg-secondary);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--color-border);
@@ -48,7 +120,7 @@ body {
 .gradient-border {
   position: relative;
   border-radius: 16px;
-  background: linear-gradient(var(--color-surface-2), var(--color-surface-2)) padding-box,
+  background: linear-gradient(var(--bg-secondary), var(--bg-secondary)) padding-box,
               linear-gradient(135deg, #00e5ff, #0040ff, #7000ff) border-box;
   border: 1.5px solid transparent;
 }
@@ -83,3 +155,4 @@ body {
   to   { opacity: 1; }
 }
 .fade-in { animation: fade-in 0.4s ease forwards; }
+

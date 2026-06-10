@@ -66,6 +66,13 @@ class BaseContextAgent:
                 parsed.time_range.end = time_result.get("end")
                 mcp_ctx.time_range_resolved = time_result
 
+        # Fallback to default start/end dates if not resolved
+        if not parsed.time_range.start or not parsed.time_range.end:
+            from datetime import datetime, timedelta
+            now = datetime.now()
+            parsed.time_range.start = parsed.time_range.start or now.strftime("%Y-%m-%d")
+            parsed.time_range.end = parsed.time_range.end or (now + timedelta(days=3)).strftime("%Y-%m-%d")
+
         # 3. Get weather forecast via MCP
         if mcp_ctx.coordinates:
             forecast = await self.call_mcp("weather.getForecast", {

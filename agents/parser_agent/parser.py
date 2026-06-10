@@ -1,28 +1,30 @@
 """
-LLM Parser Agent
-Calls NVIDIA NIM (Nemotron Nano 8B) to convert raw user input into structured JSON.
+LLM Parser Agent — V3
+Calls NVIDIA NIM to convert raw user input into structured JSON.
+Extracts: domain, intent, intent_subtype, trip_request, location, time_range.
 """
 import json
 import re
 import os
 from openai import AsyncOpenAI
 from agents.parser_agent.prompts import PARSER_SYSTEM_PROMPT
-from apps.api.app.schemas.context_schema import ParserOutput, GeographicalLocation, TimeRange
+from apps.api.app.schemas.context_schema import (
+    ParserOutput, GeographicalLocation, TimeRange, TripRequest
+)
 
 NIM_LLM_BASE_URL = os.getenv("NIM_LLM_BASE_URL", "http://localhost:8001/v1")
-NIM_LLM_MODEL = os.getenv("NIM_LLM_MODEL", "nvidia/llama-3.1-nemotron-nano-8b-v1")
+NIM_LLM_MODEL = os.getenv("NIM_LLM_MODEL", "nvidia/nemotron-3-super-120b-a12b")
 
 
 class LLMParser:
     def __init__(self):
         self.client = AsyncOpenAI(
             base_url=NIM_LLM_BASE_URL,
-            api_key="not-needed",  # NIM doesn't need an API key when self-hosted
+            api_key="not-needed",
         )
         self.model = NIM_LLM_MODEL
 
     async def parse(self, raw_input: str) -> ParserOutput:
-        """Parse raw user input into structured ParserOutput."""
         try:
             response = await self.client.chat.completions.create(
                 model=self.model,
@@ -34,37 +36,56 @@ class LLMParser:
                 max_tokens=1024,
             )
             content = response.choices[0].message.content.strip()
-
-            # Extract JSON from response (handles markdown code blocks if any)
             json_match = re.search(r"\{.*\}", content, re.DOTALL)
             if json_match:
                 content = json_match.group()
-
             data = json.loads(content)
-
-            return ParserOutput(
-                domain=data.get("domain", "unknown"),
-                intent=data.get("intent", "unknown"),
-                location=data.get("location"),
-                geographical_location=GeographicalLocation(
-                    **data.get("geographical_location", {})
-                ),
-                time_range=TimeRange(**data.get("time_range", {})),
-                involved_context=[],  # Always empty at parse stage
-                user_constraints=data.get("user_constraints", []),
-                raw_user_input=raw_input,
-            )
-
+            return self._build_output(data, raw_input)
         except Exception as e:
             print(f"[Parser] Error: {e}")
-            # Graceful fallback — must have non-None intent
-            return ParserOutput(
-                domain="unknown",
-                intent="general_query",
-                location=None,
-                geographical_location=GeographicalLocation(),
-                time_range=TimeRange(),
-                involved_context=[],
-                user_constraints=[],
-                raw_user_input=raw_input,
+            return self._fallback(raw_input)
+
+    def _build_output(self, data: dict, raw_input: str) -> ParserOutput:
+        # Build TripRequest if present
+        trip_request = None
+        tr_data = data.get("trip_request")
+        if tr_data and isinstance(tr_data, dict):
+            trip_request = TripRequest(
+                duration_days=tr_data.get("duration_days"),
+                trip_style=tr_data.get("trip_style", "general"),
+                pace=tr_data.get("pace", "balanced"),
+                preferences=tr_data.get("preferences", []),
+                include_restaurants=tr_data.get("include_restaurants", True),
+                include_routes=tr_data.get("include_routes", True),
+                include_indoor_backups=tr_data.get("include_indoor_backups", True),
+                weather_aware=tr_data.get("weather_aware", True),
             )
+
+        return ParserOutput(
+            domain=data.get("domain", "unknown"),
+            intent=data.get("intent", "unknown"),
+            intent_subtype=data.get("intent_subtype"),
+            location=data.get("location"),
+            geographical_location=GeographicalLocation(
+                **data.get("geographical_location", {})
+            ),
+            time_range=TimeRange(**data.get("time_range", {})),
+            trip_request=trip_request,
+            involved_context=[],
+            user_constraints=data.get("user_constraints", []),
+            raw_user_input=raw_input,
+        )
+
+    def _fallback(self, raw_input: str) -> ParserOutput:
+        return ParserOutput(
+            domain="unknown",
+            intent="general_query",
+            intent_subtype=None,
+            location=None,
+            geographical_location=GeographicalLocation(),
+            time_range=TimeRange(),
+            trip_request=None,
+            involved_context=[],
+            user_constraints=[],
+            raw_user_input=raw_input,
+        )

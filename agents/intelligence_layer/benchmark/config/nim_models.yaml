@@ -13,11 +13,11 @@ models:
     display_name: "Nemotron 3 Super 120B-A12B"
     provider: "nvidia_nim"
     base_url: "http://localhost:8001/v1"
-    model: "nemotron-3-super"
+    model: "nvidia/nemotron-3-super-120b-a12b"
     temperature: 0.2
     max_tokens: 2048
     timeout_seconds: 90
-    enabled: false
+    enabled: true
 
   nemotron_49b_super:
     display_name: "Llama 3.3 Nemotron Super 49B"

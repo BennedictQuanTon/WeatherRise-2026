@@ -4,11 +4,11 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY mcp/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY mcp/ /app/mcp/
 
 EXPOSE 9000
 
-CMD ["uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "9000"]
+CMD ["uvicorn", "mcp.server.main:app", "--host", "0.0.0.0", "--port", "9000"]

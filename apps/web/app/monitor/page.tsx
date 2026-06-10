@@ -1,11 +1,10 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { Sun, Moon } from "lucide-react";
 
-// API runs on 8088 — connect SSE directly (Next.js proxy buffers SSE streams)
-const API_PORT = 8088;
 function apiUrl(path: string) {
-  if (typeof window === "undefined") return `http://localhost:${API_PORT}${path}`;
-  return `${window.location.protocol}//${window.location.hostname}:${API_PORT}${path}`;
+  if (typeof window === "undefined") return `http://localhost:8000${path}`;
+  return path;
 }
 
 interface LogEntry {
@@ -62,6 +61,24 @@ export default function MonitorPage() {
   const [testing, setTesting] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const esRef = useRef<EventSource | null>(null);
+  const [theme, setTheme] = useState<"light" | "dark">("dark");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("theme") as "light" | "dark" | null;
+    if (saved) {
+      setTheme(saved);
+      document.documentElement.className = saved;
+    } else {
+      document.documentElement.className = "dark";
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    localStorage.setItem("theme", next);
+    document.documentElement.className = next;
+  };
 
   // Push log entry
   const push = useCallback((entry: LogEntry) => {
@@ -149,101 +166,106 @@ export default function MonitorPage() {
   );
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#060b17] text-gray-300 font-mono text-xs">
+    <div className="min-h-screen flex flex-col bg-[var(--bg-primary)] text-[var(--color-text-primary)] font-mono text-xs transition-colors duration-300">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-cyan-900/20 bg-[#060b17]/90 backdrop-blur px-5 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-50 border-b border-[var(--color-border)] bg-[var(--bg-primary)]/90 backdrop-blur px-5 py-3 flex items-center justify-between transition-colors duration-300">
         <div className="flex items-center gap-3">
           <span className={`w-2 h-2 rounded-full ${connected ? "bg-emerald-400 animate-pulse" : "bg-red-500"}`} />
-          <span className="text-cyan-400 font-bold text-sm tracking-widest uppercase">Weatherise Monitor</span>
-          <span className="text-gray-700 text-[10px]">Real-time Pipeline Inspector</span>
+          <span className="text-[var(--color-brand)] font-bold text-sm tracking-widest uppercase">Weatherise Monitor</span>
+          <span className="text-[var(--color-text-muted)] text-[10px]">Real-time Pipeline Inspector</span>
           <span className={`text-[10px] px-2 py-0.5 rounded-full ${connected ? "bg-emerald-900/40 text-emerald-400" : "bg-red-900/40 text-red-400"}`}>
             {connected ? "SSE Connected" : "Reconnecting..."}
           </span>
         </div>
-        <div className="flex items-center gap-3">
-          <a href="/" className="text-[10px] text-gray-600 hover:text-cyan-400 transition-colors">← Chat</a>
-          <button onClick={() => setLogs([])} className="text-[10px] text-gray-600 hover:text-red-400 transition-colors">✕ Clear</button>
-          <label className="flex items-center gap-1 cursor-pointer text-[10px] text-gray-600">
+        <div className="flex items-center gap-4">
+          <a href="/" className="text-[10px] text-[var(--color-text-secondary)] hover:text-[var(--color-brand)] transition-colors">← Chat</a>
+          <button onClick={() => setLogs([])} className="text-[10px] text-[var(--color-text-secondary)] hover:text-red-400 transition-colors">✕ Clear</button>
+          <label className="flex items-center gap-1 cursor-pointer text-[10px] text-[var(--color-text-secondary)]">
             <input type="checkbox" checked={autoScroll} onChange={e => setAutoScroll(e.target.checked)} className="w-3 h-3" />
             Auto-scroll
           </label>
+          
+          {/* Theme Toggle */}
+          <button onClick={toggleTheme} className="p-1 rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-tertiary-hover)] border border-[var(--color-border-subtle)] text-[var(--color-text-primary)] transition-all" title="Toggle theme">
+            {theme === "dark" ? <Sun size={12} /> : <Moon size={12} />}
+          </button>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden" style={{ height: "calc(100vh - 48px)" }}>
 
         {/* Left: services + test */}
-        <aside className="w-56 shrink-0 border-r border-cyan-900/15 flex flex-col bg-[#08101f]">
+        <aside className="w-56 shrink-0 border-r border-[var(--color-border)] flex flex-col bg-[var(--sidebar-bg)] transition-colors duration-300">
           {/* Health */}
-          <div className="px-3 py-2.5 border-b border-cyan-900/15 text-[10px] text-gray-600 uppercase tracking-widest">Service Health</div>
+          <div className="px-3 py-2.5 border-b border-[var(--color-border)] text-[10px] text-[var(--color-text-muted)] uppercase tracking-widest">Service Health</div>
           <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
             {svcs.map(s => (
-              <div key={s.key} className="rounded-lg px-3 py-2 bg-white/[0.02] border border-white/[0.04]">
+              <div key={s.key} className="rounded-lg px-3 py-2 bg-[var(--card-bg)] border border-[var(--card-border)]">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     {statusDot(s.status)}
-                    <span className="text-[11px] font-semibold" style={{ color: SVC_COLORS[s.name] ?? "#8ba3b0" }}>{s.name}</span>
+                    <span className="text-[11px] font-semibold" style={{ color: SVC_COLORS[s.name] ?? "var(--color-text-secondary)" }}>{s.name}</span>
                   </div>
                   {s.latency !== undefined && (
                     <span className="text-[10px]" style={{ color: durationColor(s.latency) }}>{s.latency}ms</span>
                   )}
                 </div>
-                <div className="text-[10px] text-gray-700 mt-0.5 capitalize pl-3.5">{s.status}</div>
+                <div className="text-[10px] text-[var(--color-text-muted)] mt-0.5 capitalize pl-3.5">{s.status}</div>
               </div>
             ))}
           </div>
 
           {/* Pipeline tester */}
-          <div className="border-t border-cyan-900/15 p-3">
-            <div className="text-[10px] text-gray-600 uppercase tracking-widest mb-2">Quick Test</div>
+          <div className="border-t border-[var(--color-border)] p-3">
+            <div className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-widest mb-2">Quick Test</div>
             <textarea
               value={testInput}
               onChange={e => setTestInput(e.target.value)}
               rows={3}
-              className="w-full bg-white/[0.03] border border-white/[0.06] rounded-lg p-2 text-[11px] text-gray-300 resize-none outline-none focus:border-cyan-900/60 mb-2 leading-relaxed"
+              className="w-full bg-[var(--bg-tertiary)] border border-[var(--color-border-subtle)] rounded-lg p-2 text-[11px] text-[var(--color-text-primary)] resize-none outline-none focus:border-[var(--color-brand)] mb-2 leading-relaxed"
             />
             <button onClick={runTest} disabled={testing}
               className="w-full py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all"
-              style={{ background: testing ? "rgba(0,180,255,0.08)" : "rgba(0,100,200,0.4)", color: testing ? "#546e7a" : "#00e5ff", border: "1px solid rgba(0,180,255,0.2)", cursor: testing ? "not-allowed" : "pointer" }}>
+              style={{ background: testing ? "rgba(0,180,255,0.08)" : "rgba(0,100,200,0.4)", color: testing ? "var(--color-text-muted)" : "var(--color-brand)", border: "1px solid var(--color-border)", cursor: testing ? "not-allowed" : "pointer" }}>
               {testing ? "⏳ Running..." : "▶ Run Test"}
             </button>
-            <p className="text-[10px] text-gray-700 mt-1.5 text-center">Logs appear in stream →</p>
+            <p className="text-[10px] text-[var(--color-text-muted)] mt-1.5 text-center">Logs appear in stream →</p>
           </div>
         </aside>
 
         {/* Center: log stream */}
         <main className="flex-1 flex flex-col overflow-hidden">
           {/* Filter bar */}
-          <div className="border-b border-cyan-900/15 px-4 py-2 flex items-center gap-1.5 bg-[#07101e]/60 shrink-0">
-            <span className="text-[10px] text-gray-700 mr-1">Filter:</span>
+          <div className="border-b border-[var(--color-border)] px-4 py-2 flex items-center gap-1.5 bg-[var(--bg-secondary)] shrink-0 transition-colors duration-300">
+            <span className="text-[10px] text-[var(--color-text-muted)] mr-1">Filter:</span>
             {["all","step","success","error","warn","parser","intelligence","mcp","orchestrator"].map(f => (
               <button key={f} onClick={() => setFilter(f)}
-                className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-wider transition-all ${filter === f ? "bg-cyan-900/50 text-cyan-300 border border-cyan-800/50" : "text-gray-700 hover:text-gray-400"}`}>
+                className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-wider transition-all ${filter === f ? "bg-cyan-900/50 text-cyan-300 border border-cyan-800/50" : "text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"}`}>
                 {f}
               </button>
             ))}
-            <span className="ml-auto text-[10px] text-gray-700">{filtered.length} entries</span>
+            <span className="ml-auto text-[10px] text-[var(--color-text-muted)]">{filtered.length} entries</span>
           </div>
 
           {/* Logs */}
           <div className="flex-1 overflow-y-auto px-4 py-1">
             {filtered.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-full text-gray-700 gap-3">
-                <span className="text-4xl">📡</span>
+              <div className="flex flex-col items-center justify-center h-full text-[var(--color-text-muted)] gap-3">
+                <span className="text-4xl animate-pulse">📡</span>
                 <p className="text-[11px]">{connected ? "Waiting for pipeline events..." : "Connecting to API stream..."}</p>
-                <p className="text-[10px] text-gray-800">Send a message in the chat or run a Quick Test</p>
+                <p className="text-[10px] text-[var(--color-text-muted)] opacity-70">Send a message in the chat or run a Quick Test</p>
               </div>
             )}
             {filtered.map(log => (
               <div key={log.id} className="flex items-start gap-2 py-0.5 border-b border-white/[0.02] hover:bg-white/[0.015] group">
-                <span className="text-[10px] text-gray-700 shrink-0 w-20 pt-px">{new Date(log.ts).toISOString().slice(11, 23)}</span>
-                <span className="text-[10px] font-bold shrink-0 w-24 truncate pt-px" style={{ color: SVC_COLORS[log.service] ?? "#546e7a" }}>
+                <span className="text-[10px] text-[var(--color-text-muted)] shrink-0 w-20 pt-px">{new Date(log.ts).toISOString().slice(11, 23)}</span>
+                <span className="text-[10px] font-bold shrink-0 w-24 truncate pt-px" style={{ color: SVC_COLORS[log.service] ?? "var(--color-text-muted)" }}>
                   [{log.service}]
                 </span>
                 <span className="text-[10px] shrink-0 w-12 pt-px" style={{ color: levelColor(log.level) }}>
                   {log.level.toUpperCase()}
                 </span>
-                <span className="flex-1 text-[11px] leading-relaxed break-all" style={{ color: log.level === "error" ? "#ef9a9a" : log.level === "success" ? "#e0e0e0" : "#78909c" }}>
+                <span className="flex-1 text-[11px] leading-relaxed break-all" style={{ color: log.level === "error" ? "#ef9a9a" : log.level === "success" ? "var(--color-text-primary)" : "var(--color-text-secondary)" }}>
                   {log.message}
                 </span>
                 {log.duration !== undefined && (
@@ -259,20 +281,20 @@ export default function MonitorPage() {
         </main>
 
         {/* Right: latency chart */}
-        <aside className="w-48 shrink-0 border-l border-cyan-900/15 flex flex-col bg-[#08101f]">
-          <div className="px-3 py-2.5 border-b border-cyan-900/15 text-[10px] text-gray-600 uppercase tracking-widest">Step Latency</div>
+        <aside className="w-48 shrink-0 border-l border-[var(--color-border)] flex flex-col bg-[var(--sidebar-bg)] transition-colors duration-300">
+          <div className="px-3 py-2.5 border-b border-[var(--color-border)] text-[10px] text-[var(--color-text-muted)] uppercase tracking-widest">Step Latency</div>
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
             {(() => {
               const withDur = logs.filter(l => l.level === "success" && l.duration !== undefined).slice(-15);
-              if (!withDur.length) return <p className="text-[10px] text-gray-800 text-center mt-6">No data yet</p>;
+              if (!withDur.length) return <p className="text-[10px] text-[var(--color-text-muted)] text-center mt-6">No data yet</p>;
               const max = Math.max(...withDur.map(l => l.duration ?? 0), 1);
               return withDur.map(l => (
                 <div key={l.id}>
                   <div className="flex justify-between mb-1">
-                    <span className="text-[10px] truncate" style={{ color: SVC_COLORS[l.service] ?? "#546e7a" }}>{l.service}</span>
+                    <span className="text-[10px] truncate" style={{ color: SVC_COLORS[l.service] ?? "var(--color-text-muted)" }}>{l.service}</span>
                     <span className="text-[10px] font-mono" style={{ color: durationColor(l.duration ?? 0) }}>{l.duration}ms</span>
                   </div>
-                  <div className="h-1 rounded-full bg-white/5">
+                  <div className="h-1 rounded-full bg-[var(--bg-tertiary)]">
                     <div className="h-full rounded-full transition-all duration-500"
                       style={{ width: `${Math.min(((l.duration ?? 0) / max) * 100, 100)}%`, background: durationColor(l.duration ?? 0) }} />
                   </div>
