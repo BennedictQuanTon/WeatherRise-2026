@@ -5,6 +5,8 @@ from mcp.routes.time.resolve_time_range import router as time_router
 from mcp.routes.domain.external_risk_data import router as domain_router
 from mcp.routes.map.generate_trip_route import router as map_router
 from mcp.routes.weather.forecast import router as weather_router
+from mcp.routes.agriculture.live_telemetry import router as agriculture_router
+from mcp.routes.construction.live_telemetry import router as construction_router
 
 __all__ = [
     "location_router",
@@ -14,4 +16,6 @@ __all__ = [
     "domain_router",
     "map_router",
     "weather_router",
+    "agriculture_router",
+    "construction_router",
 ]
