@@ -147,15 +147,18 @@ class ConstructionContextAgent(BaseContextAgent):
             print(f"[KB Miss] No record matched for location='{target_site}'. MCP recovery required.")
 
         # 4. Trigger Live MCP Recovery Fallback
-        risk_data = await self.call_mcp("domain.getExternalRiskData", {
-            "domain": "construction",
+        risk_data = await self.call_mcp("construction.getLiveTelemetry", {
             "location": target_site,
             "intent": parsed.intent,
+            "lat": mcp_ctx.coordinates.get("latitude") if mcp_ctx.coordinates else None,
+            "lon": mcp_ctx.coordinates.get("longitude") if mcp_ctx.coordinates else None,
         })
         if risk_data:
             mcp_ctx.external_risk_data = risk_data
             # Log recovery to trace telemetry
             knowledge_context.found_context["mcp_recovered_thresholds"] = risk_data.get("thresholds", {})
+            if "live_telemetry_reference" in risk_data:
+                knowledge_context.found_context["live_telemetry_reference"] = risk_data["live_telemetry_reference"]
 
         # 5. Extract Weather Forecast Telemetry
         forecast = await self.call_mcp("weather.getForecast", {

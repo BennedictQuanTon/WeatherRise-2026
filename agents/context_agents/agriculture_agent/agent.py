@@ -151,10 +151,11 @@ class AgricultureContextAgent(BaseContextAgent):
             print(f"[KB Miss] No record matched for location='{target_coop}'. MCP recovery required.")
 
         # 4. Trigger Live MCP Recovery Fallback
-        risk_data = await self.call_mcp("domain.getExternalRiskData", {
-            "domain": "agriculture",
+        risk_data = await self.call_mcp("agriculture.getLiveTelemetry", {
             "location": target_coop,
             "intent": parsed.intent,
+            "lat": mcp_ctx.coordinates.get("latitude") if mcp_ctx.coordinates else None,
+            "lon": mcp_ctx.coordinates.get("longitude") if mcp_ctx.coordinates else None,
         })
         if risk_data:
             mcp_ctx.external_risk_data = risk_data

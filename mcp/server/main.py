@@ -12,11 +12,13 @@ from mcp.server.routes import (
     time_router,
     domain_router,
     map_router,
+    agriculture_router,
+    construction_router,
 )
 
 app = FastAPI(
     title="Weatherise MCP Server",
-    description="Tool gateway — location, weather, place, restaurant, map, time, domain routes",
+    description="Tool gateway — location, weather, place, restaurant, map, time, domain routes, agriculture routes, construction routes",
     version="3.0.0",
 )
 
@@ -33,6 +35,8 @@ app.include_router(restaurant_router, prefix="/tools/place", tags=["Restaurant"]
 app.include_router(time_router, prefix="/tools/time", tags=["Time"])
 app.include_router(domain_router, prefix="/tools/domain", tags=["Domain"])
 app.include_router(map_router, prefix="/tools/map", tags=["Map"])
+app.include_router(agriculture_router, prefix="/tools/agriculture", tags=["Agriculture"])
+app.include_router(construction_router, prefix="/tools/construction", tags=["Construction"])
 
 
 @app.get("/health")

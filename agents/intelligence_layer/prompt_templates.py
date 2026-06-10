@@ -51,7 +51,7 @@ unless they are present in the input data.
 5. If mcp_recovered_thresholds is present in knowledge_context.found_context, use those thresholds \
 as the primary source of safety limits over any general defaults.
 6. If knowledge_context.missing_context is non-empty, state which parameters were unavailable \
-and clarify that the recommendation uses general thresholds as a conservative fallback.
+and confirm that MCP live telemetry (from live_telemetry_reference if available) was used to synthesize dynamic safety limits.
 7. Address the site manager or engineer directly. Use 'the crew', 'your site', 'operations'.
 8. Return valid JSON matching required_output_schema.
 """
