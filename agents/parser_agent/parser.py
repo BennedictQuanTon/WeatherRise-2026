@@ -12,17 +12,17 @@ from apps.api.app.schemas.context_schema import (
     ParserOutput, GeographicalLocation, TimeRange, TripRequest
 )
 
-NIM_LLM_BASE_URL = os.getenv("NIM_LLM_BASE_URL", "http://localhost:8001/v1")
-NIM_LLM_MODEL = os.getenv("NIM_LLM_MODEL", "nvidia/nemotron-3-super-120b-a12b")
+PARSER_LLM_BASE_URL = os.getenv("PARSER_LLM_BASE_URL", "http://localhost:8003/v1")
+PARSER_LLM_MODEL = os.getenv("PARSER_LLM_MODEL", "weatherise-parser-qwen35-27b")
 
 
 class LLMParser:
     def __init__(self):
         self.client = AsyncOpenAI(
-            base_url=NIM_LLM_BASE_URL,
+            base_url=PARSER_LLM_BASE_URL,
             api_key="not-needed",
         )
-        self.model = NIM_LLM_MODEL
+        self.model = PARSER_LLM_MODEL
 
     async def parse(self, raw_input: str) -> ParserOutput:
         try:
@@ -34,6 +34,7 @@ class LLMParser:
                 ],
                 temperature=0.0,
                 max_tokens=1024,
+                extra_body={"chat_template_kwargs": {"enable_thinking": False}},
             )
             content = response.choices[0].message.content.strip()
             json_match = re.search(r"\{.*\}", content, re.DOTALL)
