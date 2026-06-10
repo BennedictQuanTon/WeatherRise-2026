@@ -1,0 +1,4 @@
+case_id,model,valid_json,required_fields_present,risk_preserved,hallucination_warning_count,must_mention_score,latency_ms,error
+tourism_high_rain_001,nemotron-3-super,False,False,False,,0,,"Error code: 404 - {'object': 'error', 'message': 'The model `nemotron-3-super` does not exist.', 'type': 'NotFoundError', 'param': None, 'code': 404}"
+tourism_heat_risk_001,nemotron-3-super,False,False,False,,0,,"Error code: 404 - {'object': 'error', 'message': 'The model `nemotron-3-super` does not exist.', 'type': 'NotFoundError', 'param': None, 'code': 404}"
+tourism_good_weather_001,nemotron-3-super,False,False,False,,0,,"Error code: 404 - {'object': 'error', 'message': 'The model `nemotron-3-super` does not exist.', 'type': 'NotFoundError', 'param': None, 'code': 404}"

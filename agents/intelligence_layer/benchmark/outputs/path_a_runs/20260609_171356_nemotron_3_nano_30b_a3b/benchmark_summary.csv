@@ -1,0 +1,4 @@
+case_id,model,valid_json,required_fields_present,risk_preserved,hallucination_warning_count,must_mention_score,latency_ms,error
+tourism_high_rain_001,nemotron-3-nano,True,True,True,0,3,0,
+tourism_heat_risk_001,nemotron-3-nano,True,True,True,0,1,0,
+tourism_good_weather_001,nemotron-3-nano,True,True,True,0,2,0,
