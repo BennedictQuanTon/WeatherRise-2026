@@ -5,7 +5,7 @@ from functools import lru_cache
 class Settings(BaseSettings):
     # NIM
     nim_llm_base_url: str = "http://localhost:8001/v1"
-    nim_llm_model: str = "nvidia/llama-3.1-nemotron-nano-8b-v1"
+    nim_llm_model: str = "nvidia/nemotron-3-super-120b-a12b"
     nim_embed_base_url: str = "http://localhost:8002/v1"
     nim_embed_model: str = "nvidia/nv-embedqa-e5-v5"
 

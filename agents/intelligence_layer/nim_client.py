@@ -31,7 +31,7 @@ class NIMClient:
         )
         self.model = model or os.getenv(
             "NIM_LLM_MODEL",
-            os.getenv("NIM_MODEL", "nvidia/llama-3.1-nemotron-nano-8b-v1"),
+            os.getenv("NIM_MODEL", "nvidia/nemotron-3-super-120b-a12b"),
         )
         self.temperature = temperature
         self.max_tokens = max_tokens

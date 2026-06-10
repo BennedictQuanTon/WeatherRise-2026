@@ -8,11 +8,15 @@ STRICT RULES:
 5. Domain must be one of: "tourism", "construction", "agriculture", "unknown".
 6. For Vietnamese locations, use proper city names (e.g., "Da Nang", "Ho Chi Minh City", "Hanoi").
 7. Default timezone is "Asia/Ho_Chi_Minh".
+8. If the user asks to plan a trip (lên lịch / plan / itinerary / lịch trình / đi chơi N ngày), set intent_subtype to "multi_day_trip_planning" and fill trip_request.
+9. Extract trip duration from phrases like "3 ngày", "3 days", "cuối tuần" (= 2 days), "1 tuần" (= 7 days).
+10. Extract preferences from phrases like "thích hải sản", "muốn chụp hình", "có em bé", "tránh mưa".
 
 OUTPUT SCHEMA:
 {
   "domain": "<tourism|construction|agriculture|unknown>",
   "intent": "<short intent description>",
+  "intent_subtype": "<multi_day_trip_planning|null>",
   "location": "<location string or null>",
   "geographical_location": {
     "country": "<country or null>",
@@ -25,10 +29,22 @@ OUTPUT SCHEMA:
     "end": null,
     "timezone": "Asia/Ho_Chi_Minh"
   },
+  "trip_request": {
+    "duration_days": <number or null>,
+    "trip_style": "general",
+    "pace": "balanced",
+    "preferences": ["<pref1>", "<pref2>"],
+    "include_restaurants": true,
+    "include_routes": true,
+    "include_indoor_backups": true,
+    "weather_aware": true
+  },
   "involved_context": [],
-  "user_constraints": ["<constraint1>", "<constraint2>"],
+  "user_constraints": ["<constraint1>"],
   "raw_user_input": "<exact user input>"
 }
+
+If NOT a trip planning query, set "intent_subtype": null and "trip_request": null.
 
 EXAMPLES:
 
@@ -37,12 +53,29 @@ Output:
 {
   "domain": "tourism",
   "intent": "travel_planning",
+  "intent_subtype": "multi_day_trip_planning",
   "location": "Da Nang",
   "geographical_location": {"country": "Vietnam", "city": "Da Nang", "coordinates": null},
   "time_range": {"raw_text": "next week", "start": null, "end": null, "timezone": "Asia/Ho_Chi_Minh"},
+  "trip_request": {"duration_days": 3, "trip_style": "general", "pace": "balanced", "preferences": [], "include_restaurants": true, "include_routes": true, "include_indoor_backups": true, "weather_aware": true},
   "involved_context": [],
   "user_constraints": ["avoid heavy rain"],
   "raw_user_input": "Plan a 3-day trip in Da Nang next week, avoid heavy rain"
+}
+
+Input: "Tụi mình đi Đà Nẵng 2 ngày cuối tuần, muốn ăn hải sản và chụp ảnh, có bé nhỏ theo"
+Output:
+{
+  "domain": "tourism",
+  "intent": "travel_planning",
+  "intent_subtype": "multi_day_trip_planning",
+  "location": "Da Nang",
+  "geographical_location": {"country": "Vietnam", "city": "Da Nang", "coordinates": null},
+  "time_range": {"raw_text": "cuối tuần", "start": null, "end": null, "timezone": "Asia/Ho_Chi_Minh"},
+  "trip_request": {"duration_days": 2, "trip_style": "family", "pace": "relaxed", "preferences": ["seafood", "photo_spot", "family_friendly"], "include_restaurants": true, "include_routes": true, "include_indoor_backups": true, "weather_aware": true},
+  "involved_context": [],
+  "user_constraints": ["family with young child"],
+  "raw_user_input": "Tụi mình đi Đà Nẵng 2 ngày cuối tuần, muốn ăn hải sản và chụp ảnh, có bé nhỏ theo"
 }
 
 Input: "Is tomorrow safe for concrete pouring at the construction site in Hanoi?"
@@ -50,24 +83,13 @@ Output:
 {
   "domain": "construction",
   "intent": "safety_check_concrete_pouring",
+  "intent_subtype": null,
   "location": "Hanoi",
   "geographical_location": {"country": "Vietnam", "city": "Hanoi", "coordinates": null},
   "time_range": {"raw_text": "tomorrow", "start": null, "end": null, "timezone": "Asia/Ho_Chi_Minh"},
+  "trip_request": null,
   "involved_context": [],
   "user_constraints": [],
   "raw_user_input": "Is tomorrow safe for concrete pouring at the construction site in Hanoi?"
-}
-
-Input: "Should I irrigate my rice farm this week?"
-Output:
-{
-  "domain": "agriculture",
-  "intent": "irrigation_advice",
-  "location": null,
-  "geographical_location": {"country": "Vietnam", "city": null, "coordinates": null},
-  "time_range": {"raw_text": "this week", "start": null, "end": null, "timezone": "Asia/Ho_Chi_Minh"},
-  "involved_context": [],
-  "user_constraints": [],
-  "raw_user_input": "Should I irrigate my rice farm this week?"
 }
 """

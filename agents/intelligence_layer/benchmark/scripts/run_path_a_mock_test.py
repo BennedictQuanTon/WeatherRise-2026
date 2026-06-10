@@ -120,7 +120,7 @@ def resolve_model_config(model_key: str, registry: dict) -> dict:
     """
     if model_key == "env":
         base_url = os.environ.get("NIM_LLM_BASE_URL", "http://localhost:8001/v1")
-        model = os.environ.get("NIM_LLM_MODEL", "nvidia/llama-3.1-nemotron-nano-8b-v1")
+        model = os.environ.get("NIM_LLM_MODEL", "nvidia/nemotron-3-super-120b-a12b")
         print(f"[config] Using model from .env: {model} @ {base_url}")
         return {
             "display_name": f"{model} (from .env)",
