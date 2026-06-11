@@ -81,3 +81,60 @@ class NIMPromptBuilder:
             {"role": "system", "content": system},
             {"role": "user", "content": json.dumps(user_payload, ensure_ascii=False, indent=2)},
         ]
+
+    def build_path_b_prompt(
+        self,
+        processed_json: FullyProcessedJSON | dict[str, Any],
+        gold_weather_decision: Any,
+        prediction_result: PredictionResult | dict[str, Any],
+    ) -> list[dict[str, str]]:
+        """Build the final user-facing NIM prompt for Path B."""
+        if hasattr(processed_json, "domain"):
+            domain = processed_json.domain
+            intent = processed_json.intent
+            raw_input = processed_json.raw_user_input
+            constraints = processed_json.user_constraints
+            knowledge = processed_json.knowledge_context
+        else:
+            domain = processed_json.get("domain", "tourism")
+            intent = processed_json.get("intent", "")
+            raw_input = processed_json.get("raw_user_input", "")
+            constraints = processed_json.get("user_constraints", [])
+            knowledge = processed_json.get("knowledge_context", {})
+
+        pred_dict = prediction_result.model_dump() if hasattr(prediction_result, "model_dump") else prediction_result
+        weather_dict = (
+            gold_weather_decision.model_dump()
+            if hasattr(gold_weather_decision, "model_dump")
+            else gold_weather_decision
+        )
+
+        user_payload = {
+            "task": "Generate a final Weatherise response using Path B Gold Weather Decision.",
+            "domain": domain,
+            "intent": intent,
+            "raw_user_input": raw_input,
+            "user_constraints": constraints,
+            "knowledge_context": knowledge,
+            "gold_weather_decision": weather_dict,
+            "weather_confidence": weather_dict.get("confidence") if isinstance(weather_dict, dict) else None,
+            "sources_used": weather_dict.get("sources_used") if isinstance(weather_dict, dict) else [],
+            "source_conflicts": (
+                (weather_dict.get("comparison_matrix") or {}).get("warnings", [])
+                if isinstance(weather_dict, dict)
+                else []
+            ),
+            "prediction_engine_result": pred_dict,
+            "required_output_schema": REQUIRED_OUTPUT_SCHEMA,
+            "hard_rules": [
+                *HARD_RULES,
+                "Do not invent weather values.",
+                "Do not override deterministic risk_assessment values.",
+                "Mention weather confidence and source disagreement when useful.",
+            ],
+        }
+
+        return [
+            {"role": "system", "content": get_system_prompt(domain)},
+            {"role": "user", "content": json.dumps(user_payload, ensure_ascii=False, indent=2)},
+        ]

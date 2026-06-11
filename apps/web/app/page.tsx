@@ -83,6 +83,28 @@ interface ChatResult {
   evidence?: string[];
   weather_stats?: Record<string, any>;
   time_range?: { start: string; end: string; raw_text?: string };
+  weather_path?: string;
+  weather_confidence?: number;
+  weather_mode?: string;
+  sources_used?: string[];
+  sources_rejected?: string[];
+  weather_debug?: WeatherDebug;
+}
+
+interface WeatherDebug {
+  request_id?: string;
+  selected_mode?: string;
+  confidence?: number;
+  sources_used?: string[];
+  sources_rejected?: string[];
+  source_scores?: Array<Record<string, any>>;
+  quality_reports?: Array<Record<string, any>>;
+  comparison_matrix?: Record<string, any> | null;
+  fused_weather?: Record<string, any> | null;
+  arbiter_decision?: Record<string, any> | null;
+  selected_weather?: Record<string, any>;
+  evidence_paths?: Record<string, any>;
+  warnings?: string[];
 }
 
 interface CityWeather {
@@ -271,6 +293,80 @@ function RiskBadge({ label, value, Icon, detail }: { label: string; value: strin
       {detail && <span className="text-[9px] text-[var(--color-text-secondary)] mt-0.5">{detail}</span>}
     </div>
   );
+}
+
+function PathBDebugPanel({ result }: { result: ChatResult }) {
+  const debug = result.weather_debug;
+  if (!debug) return null;
+  const sourceScores = debug.source_scores ?? [];
+  const qualityReports = debug.quality_reports ?? [];
+  return (
+    <div className="rounded-xl border border-cyan-900/40 bg-cyan-950/10 p-3 space-y-3 text-[10px]">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 font-bold text-cyan-300">
+          <ShieldCheck size={12} />
+          <span>Path B Weather Decision</span>
+        </div>
+        <span className="px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-200 border border-cyan-800/50">
+          {result.weather_mode ?? debug.selected_mode ?? "path_b"}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <DebugMetric label="Confidence" value={formatConfidence(result.weather_confidence ?? debug.confidence)} />
+        <DebugMetric label="Sources" value={(result.sources_used ?? debug.sources_used ?? []).join(", ") || "none"} />
+      </div>
+      {sourceScores.length > 0 && (
+        <div className="space-y-1">
+          <div className="font-bold text-slate-300">Source Scores</div>
+          <div className="grid gap-1">
+            {sourceScores.slice(0, 5).map((score, idx) => (
+              <div key={`${score.source_code}-${idx}`} className="flex items-center justify-between gap-2 rounded-md bg-white/[0.03] px-2 py-1">
+                <span className="text-slate-300">{score.source_code}</span>
+                <span className="font-mono text-cyan-300">{score.rank_score}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {qualityReports.length > 0 && (
+        <div className="space-y-1">
+          <div className="font-bold text-slate-300">Quality</div>
+          <div className="grid gap-1">
+            {qualityReports.slice(0, 5).map((report, idx) => (
+              <div key={`${report.source_code}-${idx}`} className="flex items-center justify-between gap-2 rounded-md bg-white/[0.03] px-2 py-1">
+                <span className="text-slate-300">{report.source_code}</span>
+                <span className={report.valid ? "text-emerald-300" : "text-red-300"}>
+                  {report.valid ? "valid" : "rejected"} · {report.quality_score}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {debug.warnings && debug.warnings.length > 0 && (
+        <div className="space-y-1">
+          <div className="font-bold text-slate-300">Warnings</div>
+          {debug.warnings.slice(0, 4).map((warning, idx) => (
+            <div key={idx} className="rounded-md bg-amber-500/10 px-2 py-1 text-amber-200">{warning}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DebugMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md bg-white/[0.03] px-2 py-1">
+      <div className="text-slate-500">{label}</div>
+      <div className="font-mono text-slate-200 truncate">{value}</div>
+    </div>
+  );
+}
+
+function formatConfidence(value?: number) {
+  if (value === undefined || value === null) return "n/a";
+  return `${Math.round(value * 100)}%`;
 }
 
 // ─── Main ─────────────────────────────────────────────────
@@ -704,6 +800,8 @@ export default function HomePage() {
                         />
                       </div>
                     )}
+
+                    <PathBDebugPanel result={latestResult} />
 
                     {/* Forecast */}
                     {latestResult.prediction && (

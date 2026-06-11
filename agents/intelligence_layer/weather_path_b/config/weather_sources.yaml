@@ -1,0 +1,49 @@
+sources:
+  open_meteo:
+    enabled: true
+    requires_key: false
+    priority: 1
+    timeout_seconds: 6
+    supports: [hourly_forecast, daily_forecast, historical]
+  weatherapi:
+    enabled: true
+    requires_key: true
+    env_key: WEATHERAPI_KEY
+    priority: 2
+    timeout_seconds: 6
+    supports: [current_weather, three_day_forecast, recent_history, alerts]
+  tomorrow_io:
+    enabled: true
+    requires_key: true
+    env_key: TOMORROW_IO_API_KEY
+    priority: 3
+    timeout_seconds: 6
+    supports: [realtime, forecast, historical_recent, hyperlocal_check]
+  visual_crossing:
+    enabled: true
+    requires_key: true
+    env_key: VISUAL_CROSSING_API_KEY
+    priority: 4
+    timeout_seconds: 8
+    supports: [forecast, historical, alerts]
+  openweathermap:
+    enabled: true
+    requires_key: true
+    env_key: OPENWEATHERMAP_API_KEY
+    priority: 5
+    timeout_seconds: 6
+    supports: [current_weather, forecast, alerts]
+  stormglass:
+    enabled: true
+    requires_key: true
+    env_key: STORMGLASS_API_KEY
+    priority: 6
+    timeout_seconds: 8
+    supports: [marine_weather, wave_height, tides, water_temperature]
+    domain_triggers: [beach, island, water_sports, marine]
+  seven_timer:
+    enabled: true
+    requires_key: false
+    priority: 99
+    timeout_seconds: 8
+    supports: [basic_forecast, no_key_fallback]

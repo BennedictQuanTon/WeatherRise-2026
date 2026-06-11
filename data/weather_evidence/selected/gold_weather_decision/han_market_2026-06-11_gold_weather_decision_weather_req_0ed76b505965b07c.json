@@ -1,0 +1,125 @@
+{
+  "request_id": "weather_req_0ed76b505965b07c",
+  "location_name": "Han Market",
+  "forecast_time_local": "2026-06-11",
+  "selected_mode": "fused_weather",
+  "confidence": 0.949,
+  "sources_used": [
+    "open_meteo"
+  ],
+  "sources_rejected": [
+    "weatherapi",
+    "visual_crossing",
+    "openweathermap",
+    "tomorrow_io"
+  ],
+  "selected_weather": {
+    "rain_probability": 1.0,
+    "temperature_c": 31.117,
+    "humidity_percent": 30.619,
+    "precipitation_mm": 0.0,
+    "wind_speed_kmh": 28.3,
+    "wind_gust_kmh": 47.9
+  },
+  "source_scores": [
+    {
+      "source_code": "open_meteo",
+      "rank_score": 0.919,
+      "completeness_score": 1.0,
+      "freshness_score": 1.0,
+      "source_agreement_score": 1.0,
+      "domain_relevance_score": 0.82,
+      "latency_score": 0.8,
+      "quality_score": 1.0,
+      "historical_skill_score": 0.82,
+      "resolution_score": 0.78,
+      "reason": "open_meteo scored 0.919 from quality, completeness, relevance, latency, skill, and resolution."
+    }
+  ],
+  "quality_reports": [
+    {
+      "source_code": "open_meteo",
+      "valid": true,
+      "quality_score": 1.0,
+      "missing_fields": [],
+      "invalid_fields": [],
+      "warnings": []
+    }
+  ],
+  "comparison_matrix": {
+    "request_id": "weather_req_0ed76b505965b07c",
+    "location_name": "Han Market",
+    "forecast_time_local": "2026-06-11",
+    "compared_sources": [
+      "open_meteo"
+    ],
+    "values": {
+      "open_meteo": {
+        "rain_probability": 1.0,
+        "temperature_c": 31.117,
+        "humidity_percent": 30.619,
+        "precipitation_mm": 0.0,
+        "wind_speed_kmh": 28.3,
+        "wind_gust_kmh": 47.9
+      }
+    },
+    "disagreement": {},
+    "major_conflict": false,
+    "warnings": []
+  },
+  "fused_weather": {
+    "request_id": "weather_req_0ed76b505965b07c",
+    "location_name": "Han Market",
+    "forecast_time_local": "2026-06-11",
+    "fused_values": {
+      "rain_probability": 1.0,
+      "temperature_c": 31.117,
+      "humidity_percent": 30.619,
+      "precipitation_mm": 0.0,
+      "wind_speed_kmh": 28.3,
+      "wind_gust_kmh": 47.9
+    },
+    "fusion_method": "weighted_score",
+    "sources_used": [
+      "open_meteo"
+    ],
+    "sources_rejected": [
+      "weatherapi",
+      "visual_crossing",
+      "openweathermap",
+      "tomorrow_io"
+    ],
+    "confidence": 0.949,
+    "warnings": []
+  },
+  "arbiter_decision": {
+    "selected_weather_mode": "fused_weather",
+    "best_individual_source": "open_meteo",
+    "confidence": 0.949,
+    "arbiter_reason": "Only open_meteo provided data; it has perfect quality and completeness scores, no disagreements, and fused_weather matches its values exactly.",
+    "risk_interpretation": "Forecast shows certain rain (probability 1.0) with high temperature (31.1°C), low humidity (30.6%), and notable wind (28.3 km/h, gusts up to 47.9 km/h). Outdoor tourism activities may be affected by rain and strong gusts; consider wind‑related precautions.",
+    "warnings": []
+  },
+  "earth2_processing_report": {
+    "enabled": false,
+    "location_aligned": false,
+    "time_aligned": false,
+    "model_ready": false,
+    "missing_variables": [],
+    "incompatible_sources": [],
+    "processed_file_path": null,
+    "warnings": [
+      "Earth2Studio disabled; Path B continued with API evidence alignment only."
+    ],
+    "score": null
+  },
+  "evidence_paths": {
+    "comparison_report": "/raid/team/weatherise/workspaces/tuong/WeatherRise-2026/data/weather_evidence/comparison_reports/comparison/han_market_2026-06-11_comparison_weather_req_0ed76b505965b07c.json",
+    "fused_weather": "/raid/team/weatherise/workspaces/tuong/WeatherRise-2026/data/weather_evidence/fused/fusion/han_market_2026-06-11_fusion_weather_req_0ed76b505965b07c.json",
+    "raw_root": "/raid/team/weatherise/workspaces/tuong/WeatherRise-2026/data/weather_evidence/raw",
+    "normalized_root": "/raid/team/weatherise/workspaces/tuong/WeatherRise-2026/data/weather_evidence/normalized"
+  },
+  "warnings": [
+    "Earth2Studio disabled; Path B continued with API evidence alignment only."
+  ]
+}

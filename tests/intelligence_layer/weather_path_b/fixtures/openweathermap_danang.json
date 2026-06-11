@@ -1,0 +1,19 @@
+{
+  "list": [
+    {
+      "dt_txt": "2026-06-15 10:00:00",
+      "main": {
+        "temp": 31.4,
+        "feels_like": 36.2,
+        "humidity": 82,
+        "pressure": 1008
+      },
+      "rain": {"3h": 4.3},
+      "pop": 0.71,
+      "wind": {"speed": 5.5, "gust": 8.3, "deg": 116},
+      "visibility": 9000,
+      "clouds": {"all": 84},
+      "weather": [{"id": 500, "description": "light rain"}]
+    }
+  ]
+}

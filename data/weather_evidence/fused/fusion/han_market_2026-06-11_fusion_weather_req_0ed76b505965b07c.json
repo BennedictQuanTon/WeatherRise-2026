@@ -1,0 +1,25 @@
+{
+  "request_id": "weather_req_0ed76b505965b07c",
+  "location_name": "Han Market",
+  "forecast_time_local": "2026-06-11",
+  "fused_values": {
+    "rain_probability": 1.0,
+    "temperature_c": 31.117,
+    "humidity_percent": 30.619,
+    "precipitation_mm": 0.0,
+    "wind_speed_kmh": 28.3,
+    "wind_gust_kmh": 47.9
+  },
+  "fusion_method": "weighted_score",
+  "sources_used": [
+    "open_meteo"
+  ],
+  "sources_rejected": [
+    "weatherapi",
+    "visual_crossing",
+    "openweathermap",
+    "tomorrow_io"
+  ],
+  "confidence": 0.949,
+  "warnings": []
+}

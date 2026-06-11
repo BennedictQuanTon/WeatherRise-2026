@@ -1,17 +1,16 @@
 """
-Intelligence Service — Orchestrates the full Path A pipeline.
+Intelligence Service — Orchestrates the Path B weather intelligence pipeline.
 
 Flow:
   1. Validate input
-  2. Fetch weather from Open-Meteo (Intelligence Layer owns weather fetching)
-  3. Normalize into Canonical Weather JSON
-  4. Run Prediction Engine (deterministic risk scoring)
-  5. Build NIM prompt
-  6. Call NIM LLM
-  7. Build final response
+  2. Build Path B Gold Weather Decision from multi-source evidence
+  3. Run Prediction Engine (deterministic risk scoring)
+  4. Build final NIM prompt
+  5. Call NIM LLM
+  6. Build final response
 
 Error handling:
-  - Weather fetch fails → empty canonical (prediction defaults to "medium")
+  - Provider failures are isolated inside Path B
   - NIM call fails → response_builder uses prediction engine fallback text
   - Never crashes the pipeline
 """
@@ -34,6 +33,8 @@ from .prediction_engine import PredictionEngine
 from .prompt_builder import NIMPromptBuilder
 from .nim_client import NIMClient
 from .response_builder import ResponseBuilder
+from .weather_path_b.gold_weather_decision import build_weather_debug
+from .weather_path_b.path_b_service import PathBWeatherService
 
 
 class IntelligenceService:
@@ -52,6 +53,7 @@ class IntelligenceService:
         prompt_builder: Any | None = None,
         nim_client: Any | None = None,
         response_builder: Any | None = None,
+        path_b_service: Any | None = None,
     ):
         self.weather_provider = weather_provider or OpenMeteoProvider()
         self.weather_adapter = weather_adapter or OpenMeteoAdapter()
@@ -60,10 +62,11 @@ class IntelligenceService:
         self.prompt_builder = prompt_builder or NIMPromptBuilder()
         self.nim_client = nim_client or NIMClient()
         self.response_builder = response_builder or ResponseBuilder()
+        self.path_b_service = path_b_service or PathBWeatherService()
 
     async def process(self, processed_json: FullyProcessedJSON) -> IntelligenceOutput:
         """
-        Run the full Path A pipeline.
+        Run the full Path B pipeline.
 
         Args:
             processed_json: Fully processed input from Context Agent.
@@ -71,33 +74,48 @@ class IntelligenceService:
         Returns:
             IntelligenceOutput with prediction, recommendation, risk, explanation.
         """
-        # 1. Build weather fetch request
-        coords = processed_json.geographical_location.coordinates
-        request = {
-            "latitude": coords.latitude,
-            "longitude": coords.longitude,
-            "timezone": processed_json.time_range.timezone,
-            "forecast_days": 7,
-        }
-
-        # 2. Fetch weather (Intelligence Layer owns this)
-        canonical_weather = await self._fetch_and_normalize_weather(
-            request, processed_json
-        )
+        try:
+            gold_weather_decision = await self.path_b_service.run(processed_json)
+        except Exception as exc:
+            print(f"[Intelligence] Path B failed: {exc}")
+            traceback.print_exc()
+            return IntelligenceOutput(
+                prediction="Unable to process weather intelligence.",
+                recommendation="Please try again later or use a more specific location and time.",
+                risk_assessment={"overall_risk": RiskLevel.medium},
+                explanation=f"Path B weather intelligence failed: {exc}",
+                final_answer="Weather intelligence is temporarily unavailable. Please try again.",
+                metadata={"error": str(exc), "weather_path": "path_b", "weather_mode": "weather_unavailable"},
+            )
 
         # 3. Run prediction engine (deterministic)
-        prediction = self.prediction_engine.predict(processed_json, canonical_weather)
+        prediction = self.prediction_engine.predict(processed_json, gold_weather_decision)
 
         # 4. Build NIM prompt
-        messages = self.prompt_builder.build_path_a_prompt(
-            processed_json, canonical_weather, prediction
+        messages = self.prompt_builder.build_path_b_prompt(
+            processed_json, gold_weather_decision, prediction
         )
 
         # 5. Call NIM LLM
         nim_response = await self.nim_client.chat(messages)
 
         # 6. Build final response
-        return self.response_builder.build(prediction, nim_response)
+        return self.response_builder.build(
+            prediction,
+            nim_response,
+            extra_metadata=self._path_b_metadata(gold_weather_decision),
+        )
+
+    def _path_b_metadata(self, gold_weather_decision: Any) -> dict[str, Any]:
+        debug = build_weather_debug(gold_weather_decision)
+        return {
+            "weather_path": "path_b",
+            "weather_confidence": gold_weather_decision.confidence,
+            "weather_mode": gold_weather_decision.selected_mode,
+            "sources_used": gold_weather_decision.sources_used,
+            "sources_rejected": gold_weather_decision.sources_rejected,
+            "weather_debug": debug,
+        }
 
     async def _fetch_and_normalize_weather(
         self,

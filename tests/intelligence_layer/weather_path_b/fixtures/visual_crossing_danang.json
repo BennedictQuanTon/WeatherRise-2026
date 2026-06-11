@@ -1,0 +1,27 @@
+{
+  "days": [
+    {
+      "datetime": "2026-06-15",
+      "hours": [
+        {
+          "datetime": "10:00:00",
+          "temp": 30.9,
+          "feelslike": 35.1,
+          "humidity": 84,
+          "precip": 5.2,
+          "precipprob": 73,
+          "windspeed": 19.0,
+          "windgust": 29.0,
+          "winddir": 118,
+          "pressure": 1009,
+          "visibility": 8,
+          "cloudcover": 83,
+          "uvindex": 4,
+          "icon": "rain",
+          "conditions": "Rain"
+        }
+      ]
+    }
+  ],
+  "alerts": []
+}

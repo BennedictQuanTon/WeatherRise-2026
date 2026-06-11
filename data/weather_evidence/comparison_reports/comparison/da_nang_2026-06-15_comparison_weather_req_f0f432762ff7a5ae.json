@@ -1,0 +1,21 @@
+{
+  "request_id": "weather_req_f0f432762ff7a5ae",
+  "location_name": "Da Nang",
+  "forecast_time_local": "2026-06-15",
+  "compared_sources": [
+    "open_meteo"
+  ],
+  "values": {
+    "open_meteo": {
+      "rain_probability": 1.0,
+      "temperature_c": 31.155,
+      "humidity_percent": 70.173,
+      "precipitation_mm": 0.6,
+      "wind_speed_kmh": 15.6,
+      "wind_gust_kmh": 47.5
+    }
+  },
+  "disagreement": {},
+  "major_conflict": false,
+  "warnings": []
+}

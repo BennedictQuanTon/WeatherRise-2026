@@ -20,6 +20,7 @@ class ResponseBuilder:
         self,
         prediction_result: PredictionResult,
         nim_response: NIMResponse,
+        extra_metadata: dict[str, Any] | None = None,
     ) -> IntelligenceOutput:
         """
         Merge prediction engine result with NIM LLM output.
@@ -61,6 +62,9 @@ class ResponseBuilder:
 
         if nim_response.usage:
             metadata["token_usage"] = nim_response.usage
+
+        if extra_metadata:
+            metadata.update(extra_metadata)
 
         return IntelligenceOutput(
             prediction=prediction,

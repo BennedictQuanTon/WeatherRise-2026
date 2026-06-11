@@ -1,0 +1,13 @@
+{
+  "hourly": {
+    "time": ["2026-06-15T10:00", "2026-06-15T11:00"],
+    "temperature_2m": [31.0, 32.0],
+    "relative_humidity_2m": [82, 80],
+    "precipitation": [4.0, 5.0],
+    "precipitation_probability": [70, 72],
+    "wind_speed_10m": [18.0, 20.0],
+    "wind_gusts_10m": [28.0, 30.0],
+    "wind_direction_10m": [110, 120],
+    "cloud_cover": [80, 85]
+  }
+}
