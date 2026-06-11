@@ -6,8 +6,11 @@ Loads incomplete local KB tracking parameters to explicitly force live MCP calls
 """
 import json
 import os
+import time
 from datetime import datetime, timedelta
 from typing import List
+
+from apps.api.app.routes.monitor import emit
 from agents.context_agents.base_context_agent import BaseContextAgent
 from apps.api.app.schemas.context_schema import (
     ParserOutput, MCPContext, FullyProcessedPayload,
@@ -81,7 +84,7 @@ class AgricultureContextAgent(BaseContextAgent):
         return list(dict.fromkeys(ctx))
 
     def get_weather_variables(self, intent: str) -> List[str]:
-        base = ["rain_probability", "temperature", "humidity", "wind_speed"]
+        base = ["rain_probability", "temperature_c", "humidity_percent", "wind_speed_kmh"]
         if "irrigation" in intent.lower():
             base += ["soil_moisture_proxy", "evapotranspiration"]
         if "disease" in intent.lower():
@@ -95,6 +98,7 @@ class AgricultureContextAgent(BaseContextAgent):
         knowledge_context = KnowledgeContext()
 
         # 1. Enforce default coordinates fallback
+        t_phase1 = time.time()
         if parsed.location:
             coord_result = await self.call_mcp("location.resolveCoordinates", {
                 "location": parsed.location
@@ -126,7 +130,11 @@ class AgricultureContextAgent(BaseContextAgent):
             parsed.time_range.start = parsed.time_range.start or now.strftime("%Y-%m-%d")
             parsed.time_range.end = parsed.time_range.end or (now + timedelta(days=1)).strftime("%Y-%m-%d")
 
+        ms_phase1 = int((time.time() - t_phase1) * 1000)
+        emit("step", "AgricultureAgent", "Phase I: Coordinates & Time resolved", duration_ms=ms_phase1)
+
         # 3. Interrogate Fragmented Knowledge Base (Forced Cache-Miss)
+        t_phase2 = time.time()
         target_coop = parsed.location or "DANANG_AGRI_COOP_02"
         kb_record = {}
 
@@ -150,7 +158,11 @@ class AgricultureContextAgent(BaseContextAgent):
             knowledge_context.missing_context = ["crop_matrices", "critical_dry_time_hours"]
             print(f"[KB Miss] No record matched for location='{target_coop}'. MCP recovery required.")
 
+        ms_phase2 = int((time.time() - t_phase2) * 1000)
+        emit("step", "AgricultureAgent", "Phase II: KB Cache Search", duration_ms=ms_phase2)
+
         # 4. Trigger Live MCP Recovery Fallback
+        t_mcp = time.time()
         risk_data = await self.call_mcp("agriculture.getLiveTelemetry", {
             "location": target_coop,
             "intent": parsed.intent,
@@ -162,7 +174,11 @@ class AgricultureContextAgent(BaseContextAgent):
             # Log recovery to trace telemetry
             knowledge_context.found_context["mcp_recovered_thresholds"] = risk_data.get("thresholds", {})
 
+        ms_mcp = int((time.time() - t_mcp) * 1000)
+        emit("step", "AgricultureAgent", "Phase III: Live Telemetry MCP", duration_ms=ms_mcp)
+
         # 5. Extract Weather Forecast Telemetry
+        t_weather = time.time()
         forecast = await self.call_mcp("weather.getForecast", {
             "latitude": mcp_ctx.coordinates["latitude"],
             "longitude": mcp_ctx.coordinates["longitude"],
@@ -171,6 +187,9 @@ class AgricultureContextAgent(BaseContextAgent):
         })
         if forecast:
             mcp_ctx.weather_forecast = forecast
+
+        ms_weather = int((time.time() - t_weather) * 1000)
+        emit("step", "AgricultureAgent", "Phase IV: Weather Forecast MCP", duration_ms=ms_weather)
 
         # 6. Evaluate Operational Context Completeness markers
         has_recovered = "mcp_recovered_thresholds" in knowledge_context.found_context
