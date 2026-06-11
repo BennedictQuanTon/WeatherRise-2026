@@ -11,6 +11,7 @@ STRICT RULES:
 8. If the user asks to plan a trip (lên lịch / plan / itinerary / lịch trình / đi chơi N ngày), set intent_subtype to "multi_day_trip_planning" and fill trip_request.
 9. Extract trip duration from phrases like "3 ngày", "3 days", "cuối tuần" (= 2 days), "1 tuần" (= 7 days).
 10. Extract preferences from phrases like "thích hải sản", "muốn chụp hình", "có em bé", "tránh mưa".
+11. If the user mentions specific landmarks, attractions, pagodas, or food/beverage venues they want to visit (e.g., "Chùa Nam Sơn", "Nam Son Pagoda", "NAM house Cafe"), extract them as elements in the `preferences` list.
 
 OUTPUT SCHEMA:
 {

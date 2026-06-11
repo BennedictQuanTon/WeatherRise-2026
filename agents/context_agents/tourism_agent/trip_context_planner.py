@@ -99,11 +99,14 @@ def build_trip_plan(
         if day_anchor and restaurants:
             day_restaurants = sorted(
                 restaurants,
-                key=lambda r: haversine_km(
-                    day_anchor.get("latitude", 0), day_anchor.get("longitude", 0),
-                    r.get("latitude", 0), r.get("longitude", 0)
+                key=lambda r: (
+                    0 if "search_score" in r or r.get("source") == "google_maps_scrape" else 1,
+                    haversine_km(
+                        day_anchor.get("latitude", 0), day_anchor.get("longitude", 0),
+                        r.get("latitude", 0), r.get("longitude", 0)
+                    )
                 )
-            )[:4]  # top 4 nearest restaurants
+            )[:4]  # top 4 nearest/preferred restaurants
 
         # Assign to time blocks
         attr_iter = iter(day_attractions)

@@ -9,7 +9,7 @@ from knowledge.vector_store.client import VectorStoreClient, SearchResult
 
 # 3-Tier score thresholds (shared across all retrievers)
 SCORE_HIGH = 0.72    # Tier 1: Confident KB match
-SCORE_LOW = 0.50     # Tier 2: Possible KB match
+SCORE_LOW = 0.45     # Tier 2: Possible KB match
 MIN_RESULTS = 3      # Minimum results to consider "enough"
 
 
