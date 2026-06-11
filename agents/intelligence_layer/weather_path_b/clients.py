@@ -85,7 +85,7 @@ class OpenMeteoClient(BaseWeatherClient):
             "timezone": requirement.timezone,
             "forecast_days": 7,
         }
-        async with httpx.AsyncClient(timeout=self.config.timeout_seconds) as client:
+        async with httpx.AsyncClient(timeout=self.config.timeout_seconds, follow_redirects=True) as client:
             response = await client.get(url, params=params)
             response.raise_for_status()
             return response.json()
@@ -96,7 +96,8 @@ class WeatherAPIClient(BaseWeatherClient):
 
     async def _fetch_payload(self, requirement: WeatherRequirement) -> dict[str, Any]:
         key = self.config.api_key()
-        url = "https://api.weatherapi.com/v1/forecast.json"
+        base_url = os.getenv("WEATHERAPI_BASE_URL", "https://api.weatherapi.com/v1").rstrip("/")
+        url = f"{base_url}/forecast.json"
         params = {
             "key": key,
             "q": f"{requirement.latitude},{requirement.longitude}",
@@ -115,7 +116,8 @@ class TomorrowIOClient(BaseWeatherClient):
 
     async def _fetch_payload(self, requirement: WeatherRequirement) -> dict[str, Any]:
         key = self.config.api_key()
-        url = "https://api.tomorrow.io/v4/weather/forecast"
+        base_url = os.getenv("TOMORROW_IO_BASE_URL", "https://api.tomorrow.io/v4").rstrip("/")
+        url = f"{base_url}/weather/forecast"
         params = {
             "apikey": key,
             "location": f"{requirement.latitude},{requirement.longitude}",
@@ -135,9 +137,13 @@ class VisualCrossingClient(BaseWeatherClient):
         key = self.config.api_key()
         start = requirement.start_time or "today"
         end = requirement.end_time or start
+        base_url = os.getenv(
+            "VISUAL_CROSSING_BASE_URL",
+            "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services",
+        ).rstrip("/")
         url = (
-            "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/"
-            f"timeline/{requirement.latitude},{requirement.longitude}/{start}/{end}"
+            f"{base_url}/timeline/"
+            f"{requirement.latitude},{requirement.longitude}/{start}/{end}"
         )
         params = {"key": key, "unitGroup": "metric", "include": "days,hours,alerts", "contentType": "json"}
         async with httpx.AsyncClient(timeout=self.config.timeout_seconds) as client:
@@ -151,7 +157,8 @@ class OpenWeatherMapClient(BaseWeatherClient):
 
     async def _fetch_payload(self, requirement: WeatherRequirement) -> dict[str, Any]:
         key = self.config.api_key()
-        url = "https://api.openweathermap.org/data/2.5/forecast"
+        base_url = os.getenv("OPENWEATHERMAP_BASE_URL", "https://api.openweathermap.org/data/2.5").rstrip("/")
+        url = f"{base_url}/forecast"
         params = {
             "appid": key,
             "lat": requirement.latitude,
@@ -168,14 +175,14 @@ class SevenTimerClient(BaseWeatherClient):
     source_code = "seven_timer"
 
     async def _fetch_payload(self, requirement: WeatherRequirement) -> dict[str, Any]:
-        url = "https://www.7timer.info/bin/api.pl"
+        url = os.getenv("SEVEN_TIMER_BASE_URL", "https://www.7timer.info/bin/api.pl")
         params = {
             "lon": requirement.longitude,
             "lat": requirement.latitude,
             "product": "civil",
             "output": "json",
         }
-        async with httpx.AsyncClient(timeout=self.config.timeout_seconds) as client:
+        async with httpx.AsyncClient(timeout=self.config.timeout_seconds, follow_redirects=True) as client:
             response = await client.get(url, params=params)
             response.raise_for_status()
             return response.json()
@@ -188,7 +195,8 @@ class StormglassClient(BaseWeatherClient):
         key = self.config.api_key()
         if not key:
             raise RuntimeError("Stormglass API key is missing")
-        url = "https://api.stormglass.io/v2/weather/point"
+        base_url = os.getenv("STORMGLASS_BASE_URL", "https://api.stormglass.io/v2").rstrip("/")
+        url = f"{base_url}/weather/point"
         params = {
             "lat": requirement.latitude,
             "lng": requirement.longitude,

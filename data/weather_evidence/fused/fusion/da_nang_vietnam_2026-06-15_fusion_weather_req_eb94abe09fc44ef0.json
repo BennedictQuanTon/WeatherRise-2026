@@ -1,0 +1,33 @@
+{
+  "request_id": "weather_req_eb94abe09fc44ef0",
+  "location_name": "Da Nang, Vietnam",
+  "forecast_time_local": "2026-06-15",
+  "fused_values": {
+    "rain_probability": 0.9,
+    "temperature_c": 29.019,
+    "humidity_percent": 75.123,
+    "precipitation_mm": 43.812,
+    "wind_speed_kmh": 22.194,
+    "wind_gust_kmh": 42.75,
+    "visibility_km": 13.588,
+    "uv_index": 11.25,
+    "weather_description": "Partly Cloudy"
+  },
+  "fusion_method": "weighted_score_conservative",
+  "sources_used": [
+    "open_meteo",
+    "tomorrow_io",
+    "openweathermap",
+    "weatherapi",
+    "visual_crossing",
+    "seven_timer"
+  ],
+  "sources_rejected": [],
+  "confidence": 0.761,
+  "warnings": [
+    "Major rain probability disagreement detected.",
+    "Major wind speed disagreement detected.",
+    "Fusion confidence reduced by major source conflict.",
+    "Conservative fusion applied for safety-sensitive weather planning."
+  ]
+}

@@ -1,0 +1,326 @@
+{
+  "request_id": "weather_req_48478458a50f37a1",
+  "location_name": "Da Nang, Vietnam",
+  "forecast_time_local": "2026-06-15",
+  "selected_mode": "fused_weather",
+  "confidence": 0.761,
+  "sources_used": [
+    "open_meteo",
+    "tomorrow_io",
+    "openweathermap",
+    "weatherapi",
+    "visual_crossing",
+    "seven_timer"
+  ],
+  "sources_rejected": [],
+  "selected_weather": {
+    "rain_probability": 0.9,
+    "temperature_c": 29.019,
+    "humidity_percent": 75.123,
+    "precipitation_mm": 43.812,
+    "wind_speed_kmh": 22.194,
+    "wind_gust_kmh": 42.75,
+    "visibility_km": 13.588,
+    "uv_index": 11.25,
+    "weather_description": "Partly Cloudy"
+  },
+  "source_scores": [
+    {
+      "source_code": "open_meteo",
+      "rank_score": 0.919,
+      "completeness_score": 1.0,
+      "freshness_score": 1.0,
+      "source_agreement_score": 1.0,
+      "domain_relevance_score": 0.82,
+      "latency_score": 0.8,
+      "quality_score": 1.0,
+      "historical_skill_score": 0.82,
+      "resolution_score": 0.78,
+      "reason": "open_meteo scored 0.919 from quality, completeness, relevance, latency, skill, and resolution."
+    },
+    {
+      "source_code": "tomorrow_io",
+      "rank_score": 0.914,
+      "completeness_score": 1.0,
+      "freshness_score": 1.0,
+      "source_agreement_score": 1.0,
+      "domain_relevance_score": 0.74,
+      "latency_score": 0.8,
+      "quality_score": 1.0,
+      "historical_skill_score": 0.8,
+      "resolution_score": 0.86,
+      "reason": "tomorrow_io scored 0.914 from quality, completeness, relevance, latency, skill, and resolution."
+    },
+    {
+      "source_code": "openweathermap",
+      "rank_score": 0.912,
+      "completeness_score": 1.0,
+      "freshness_score": 1.0,
+      "source_agreement_score": 1.0,
+      "domain_relevance_score": 0.74,
+      "latency_score": 1.0,
+      "quality_score": 1.0,
+      "historical_skill_score": 0.76,
+      "resolution_score": 0.72,
+      "reason": "openweathermap scored 0.912 from quality, completeness, relevance, latency, skill, and resolution."
+    },
+    {
+      "source_code": "weatherapi",
+      "rank_score": 0.901,
+      "completeness_score": 1.0,
+      "freshness_score": 1.0,
+      "source_agreement_score": 1.0,
+      "domain_relevance_score": 0.74,
+      "latency_score": 0.8,
+      "quality_score": 1.0,
+      "historical_skill_score": 0.78,
+      "resolution_score": 0.75,
+      "reason": "weatherapi scored 0.901 from quality, completeness, relevance, latency, skill, and resolution."
+    },
+    {
+      "source_code": "visual_crossing",
+      "rank_score": 0.897,
+      "completeness_score": 1.0,
+      "freshness_score": 1.0,
+      "source_agreement_score": 1.0,
+      "domain_relevance_score": 0.74,
+      "latency_score": 0.8,
+      "quality_score": 1.0,
+      "historical_skill_score": 0.77,
+      "resolution_score": 0.72,
+      "reason": "visual_crossing scored 0.897 from quality, completeness, relevance, latency, skill, and resolution."
+    },
+    {
+      "source_code": "seven_timer",
+      "rank_score": 0.623,
+      "completeness_score": 0.4,
+      "freshness_score": 1.0,
+      "source_agreement_score": 1.0,
+      "domain_relevance_score": 0.45,
+      "latency_score": 0.8,
+      "quality_score": 0.73,
+      "historical_skill_score": 0.55,
+      "resolution_score": 0.45,
+      "reason": "seven_timer scored 0.623 from quality, completeness, relevance, latency, skill, and resolution."
+    }
+  ],
+  "quality_reports": [
+    {
+      "source_code": "open_meteo",
+      "valid": true,
+      "quality_score": 1.0,
+      "missing_fields": [],
+      "invalid_fields": [],
+      "warnings": []
+    },
+    {
+      "source_code": "weatherapi",
+      "valid": true,
+      "quality_score": 1.0,
+      "missing_fields": [],
+      "invalid_fields": [],
+      "warnings": []
+    },
+    {
+      "source_code": "tomorrow_io",
+      "valid": true,
+      "quality_score": 1.0,
+      "missing_fields": [],
+      "invalid_fields": [],
+      "warnings": []
+    },
+    {
+      "source_code": "visual_crossing",
+      "valid": true,
+      "quality_score": 1.0,
+      "missing_fields": [],
+      "invalid_fields": [],
+      "warnings": []
+    },
+    {
+      "source_code": "openweathermap",
+      "valid": true,
+      "quality_score": 1.0,
+      "missing_fields": [],
+      "invalid_fields": [],
+      "warnings": []
+    },
+    {
+      "source_code": "seven_timer",
+      "valid": true,
+      "quality_score": 0.73,
+      "missing_fields": [
+        "rain_probability",
+        "humidity_percent",
+        "precipitation_mm"
+      ],
+      "invalid_fields": [],
+      "warnings": [
+        "Missing critical fields: rain_probability, humidity_percent, precipitation_mm"
+      ]
+    }
+  ],
+  "comparison_matrix": {
+    "request_id": "weather_req_48478458a50f37a1",
+    "location_name": "Da Nang, Vietnam",
+    "forecast_time_local": "2026-06-15",
+    "compared_sources": [
+      "open_meteo",
+      "openweathermap",
+      "seven_timer",
+      "tomorrow_io",
+      "visual_crossing",
+      "weatherapi"
+    ],
+    "values": {
+      "open_meteo": {
+        "rain_probability": 1.0,
+        "temperature_c": 31.155,
+        "humidity_percent": 70.173,
+        "precipitation_mm": 0.6,
+        "wind_speed_kmh": 15.6,
+        "wind_gust_kmh": 47.5
+      },
+      "weatherapi": {
+        "rain_probability": 0.92,
+        "temperature_c": 27.533,
+        "humidity_percent": 78.286,
+        "precipitation_mm": 26.5,
+        "wind_speed_kmh": 23.8,
+        "wind_gust_kmh": 42.3,
+        "visibility_km": 8.982,
+        "uv_index": 12.5,
+        "weather_description": "Partly Cloudy"
+      },
+      "tomorrow_io": {
+        "rain_probability": 0.25,
+        "temperature_c": 30.176,
+        "humidity_percent": 76.075,
+        "precipitation_mm": 1.46,
+        "wind_speed_kmh": 13.68,
+        "wind_gust_kmh": 27.72,
+        "visibility_km": 12.869,
+        "uv_index": 11.0
+      },
+      "visual_crossing": {
+        "rain_probability": 0.87,
+        "temperature_c": 28.342,
+        "humidity_percent": 75.382,
+        "precipitation_mm": 23.6,
+        "wind_speed_kmh": 24.1,
+        "wind_gust_kmh": 26.3,
+        "visibility_km": 22.594,
+        "uv_index": 9.0,
+        "weather_description": "Rain, Partially cloudy"
+      },
+      "openweathermap": {
+        "rain_probability": 1.0,
+        "temperature_c": 28.604,
+        "humidity_percent": 75.775,
+        "precipitation_mm": 48.68,
+        "wind_speed_kmh": 24.66,
+        "wind_gust_kmh": 40.824,
+        "visibility_km": 10.0,
+        "weather_description": "overcast clouds"
+      },
+      "seven_timer": {
+        "temperature_c": 27.906,
+        "wind_speed_kmh": 3.0,
+        "weather_description": "cloudyday"
+      }
+    },
+    "disagreement": {
+      "rain_probability_range": 0.75,
+      "rain_probability_mean": 0.808,
+      "temperature_c_range": 3.622,
+      "temperature_c_mean": 28.953,
+      "humidity_percent_range": 8.113,
+      "humidity_percent_mean": 75.138,
+      "precipitation_mm_range": 48.08,
+      "precipitation_mm_mean": 20.168,
+      "wind_speed_kmh_range": 21.66,
+      "wind_speed_kmh_mean": 17.473,
+      "wind_gust_kmh_range": 21.2,
+      "wind_gust_kmh_mean": 36.929,
+      "visibility_km_range": 13.612,
+      "visibility_km_mean": 13.611,
+      "uv_index_range": 3.5,
+      "uv_index_mean": 10.833
+    },
+    "major_conflict": true,
+    "warnings": [
+      "Major rain probability disagreement detected.",
+      "Major wind speed disagreement detected."
+    ]
+  },
+  "fused_weather": {
+    "request_id": "weather_req_48478458a50f37a1",
+    "location_name": "Da Nang, Vietnam",
+    "forecast_time_local": "2026-06-15",
+    "fused_values": {
+      "rain_probability": 0.9,
+      "temperature_c": 29.019,
+      "humidity_percent": 75.123,
+      "precipitation_mm": 43.812,
+      "wind_speed_kmh": 22.194,
+      "wind_gust_kmh": 42.75,
+      "visibility_km": 13.588,
+      "uv_index": 11.25,
+      "weather_description": "Partly Cloudy"
+    },
+    "fusion_method": "weighted_score_conservative",
+    "sources_used": [
+      "open_meteo",
+      "tomorrow_io",
+      "openweathermap",
+      "weatherapi",
+      "visual_crossing",
+      "seven_timer"
+    ],
+    "sources_rejected": [],
+    "confidence": 0.761,
+    "warnings": [
+      "Major rain probability disagreement detected.",
+      "Major wind speed disagreement detected.",
+      "Fusion confidence reduced by major source conflict.",
+      "Conservative fusion applied for safety-sensitive weather planning."
+    ]
+  },
+  "arbiter_decision": {
+    "selected_weather_mode": "fused_weather",
+    "best_individual_source": "open_meteo",
+    "confidence": 0.761,
+    "arbiter_reason": "NIM arbiter fallback used. First error=None; retry error=None",
+    "risk_interpretation": "Use deterministic fused/selected weather evidence with conservative handling when confidence is reduced.",
+    "warnings": [
+      "Deterministic arbiter fallback used."
+    ]
+  },
+  "earth2_processing_report": {
+    "enabled": false,
+    "location_aligned": false,
+    "time_aligned": false,
+    "model_ready": false,
+    "missing_variables": [],
+    "incompatible_sources": [],
+    "processed_file_path": null,
+    "warnings": [
+      "Earth2Studio disabled; Path B continued with API evidence alignment only."
+    ],
+    "score": null
+  },
+  "evidence_paths": {
+    "comparison_report": "/raid/team/weatherise/workspaces/tuong/WeatherRise-2026/data/weather_evidence/comparison_reports/comparison/da_nang_vietnam_2026-06-15_comparison_weather_req_48478458a50f37a1.json",
+    "fused_weather": "/raid/team/weatherise/workspaces/tuong/WeatherRise-2026/data/weather_evidence/fused/fusion/da_nang_vietnam_2026-06-15_fusion_weather_req_48478458a50f37a1.json",
+    "raw_root": "/raid/team/weatherise/workspaces/tuong/WeatherRise-2026/data/weather_evidence/raw",
+    "normalized_root": "/raid/team/weatherise/workspaces/tuong/WeatherRise-2026/data/weather_evidence/normalized"
+  },
+  "warnings": [
+    "Major rain probability disagreement detected.",
+    "Major wind speed disagreement detected.",
+    "Fusion confidence reduced by major source conflict.",
+    "Conservative fusion applied for safety-sensitive weather planning.",
+    "Deterministic arbiter fallback used.",
+    "Earth2Studio disabled; Path B continued with API evidence alignment only."
+  ]
+}
