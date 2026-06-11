@@ -20,21 +20,21 @@ sys.path.insert(0, str(REPO_ROOT))
 # Import ingestion pipeline
 from knowledge.rag_pipeline.ingestion import async_ingest_places
 
-APIFY_RUN_URL = "https://api.apify.com/v2/acts/apify~google-maps-scraper/runs"
+APIFY_RUN_URL = "https://api.apify.com/v2/acts/compass~crawler-google-places/runs"
 
 # Comprehensive search terms to cover all types of attractions in Da Nang
 DEFAULT_QUERIES = [
-    "địa điểm du lịch đà nẵng",
-    "bãi biển đẹp đà nẵng",
-    "chùa nổi tiếng đà nẵng",
-    "bảo tàng đà nẵng",
-    "khu vui chơi giải trí đà nẵng",
-    "địa điểm check-in đà nẵng",
-    "công viên đẹp đà nẵng",
-    "nhà thờ ở đà nẵng",
-    "cầu đẹp đà nẵng",
-    "điểm tham quan đà nẵng",
-    "quán cafe nổi tiếng đà nẵng"
+    "tourist attraction",
+    "bãi biển đẹp",
+    "chùa nổi tiếng",
+    "bảo tàng",
+    "khu vui chơi giải trí",
+    "địa điểm check-in",
+    "công viên đẹp",
+    "nhà thờ",
+    "cầu nổi tiếng",
+    "quán cafe đẹp",
+    "nhà hàng nổi tiếng"
 ]
 
 
@@ -94,15 +94,18 @@ async def run_scraper(apify_token: str, queries: list, max_places: int = 100):
     # Configure input payload for apify/google-maps-scraper
     payload = {
         "searchStringsArray": queries,
+        "locationQuery": "Da Nang, Vietnam",
         "maxCrawledPlacesPerSearch": max_places,
         "language": "vi",
         "includeReviews": False,
-        "maxReviews": 0,
-        "scrapeSocialMediaProfiles": False
+        "maxReviews": 0
     }
     
     print(f"[Apify] Triggering Google Maps Scraper for {len(queries)} search terms...")
     r = requests.post(f"{APIFY_RUN_URL}?token={apify_token}", json=payload, headers=headers)
+    if r.status_code != 200 and r.status_code != 201:
+        print(f"[Apify Error] Status code: {r.status_code}")
+        print(f"[Apify Error] Response body: {r.text}")
     r.raise_for_status()
     run_data = r.json().get("data", {})
     run_id = run_data.get("id")
@@ -195,12 +198,17 @@ async def main():
         if not is_indoor:
             weather_rules = {"max_wind_kmh": 40, "max_rain_prob_pct": 60}
             
+        # Classify main category: cafes and restaurants go to 'restaurant'
+        main_category = "attraction"
+        if "cafe" in vibe_tags or "restaurant" in vibe_tags:
+            main_category = "restaurant"
+
         normalized_places.append({
             "place_id": pid,
             "source": "google_maps_scrape",
             "name_vi": name,
             "name_en": name,
-            "category": "attraction",
+            "category": main_category,
             "sub_category": sub_cat,
             "address": item.get("address", ""),
             "city": "Da Nang",

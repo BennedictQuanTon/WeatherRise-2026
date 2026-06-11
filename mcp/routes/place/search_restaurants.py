@@ -51,7 +51,7 @@ async def _query_postgres(req: RestaurantSearchRequest) -> List[Dict]:
                 address, district, latitude, longitude,
                 avg_rating, total_reviews, price_tier,
                 vibe_tags, is_indoor, photo_url, foody_url,
-                avg_duration_minutes,
+                avg_duration_minutes, source,
                 ST_Distance(coordinate, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography) AS dist_m
             FROM locations
             WHERE category = 'restaurant'
@@ -61,7 +61,10 @@ async def _query_postgres(req: RestaurantSearchRequest) -> List[Dict]:
                 $3
             )
             AND is_opening = true
-            ORDER BY dist_m ASC, avg_rating DESC
+            ORDER BY 
+                CASE WHEN source = 'google_maps_scrape' THEN 0 ELSE 1 END ASC,
+                dist_m ASC, 
+                avg_rating DESC
             LIMIT $4
         """
         rows = await conn.fetch(query, lon, lat, radius_m, req.limit)
@@ -85,7 +88,7 @@ async def _query_postgres(req: RestaurantSearchRequest) -> List[Dict]:
                 "photo_url": r["photo_url"],
                 "avg_duration_minutes": r["avg_duration_minutes"],
                 "distance_m": round(float(r["dist_m"]), 0),
-                "source": "postgres_foody",
+                "source": r["source"] or "postgres_foody",
             }
             for r in rows
         ]

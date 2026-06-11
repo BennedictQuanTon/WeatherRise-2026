@@ -127,6 +127,33 @@ async def _upsert_postgres(
             if not (place_id and lat and lon):
                 continue
 
+            # Deduplication: check for similar name within 30 meters
+            try:
+                dup_id = await conn.fetchval("""
+                    SELECT id 
+                    FROM locations 
+                    WHERE (
+                        lower(name_vi) = lower($1) 
+                        OR lower(name_en) = lower($1)
+                        OR lower(name_vi) LIKE '%' || lower($1) || '%'
+                        OR lower($1) LIKE '%' || lower(name_vi) || '%'
+                    )
+                    AND ST_DWithin(
+                        coordinate,
+                        ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography,
+                        30
+                    )
+                    LIMIT 1
+                """, name_vi, float(lon), float(lat))
+                
+                if dup_id and dup_id != place_id:
+                    if source == "google_maps_scrape" and not dup_id.startswith("gmaps_"):
+                        # Overwrite: Delete old duplicate so the high-quality GMaps record is inserted instead
+                        await conn.execute("DELETE FROM locations WHERE id = $1", dup_id)
+                        print(f"[Ingestion] Deduplicated: Deleted old duplicate '{dup_id}' to prefer GMaps record")
+            except Exception as spatial_err:
+                print(f"[Ingestion] Spatial duplicate check warning: {spatial_err}")
+
             await conn.execute("""
                 INSERT INTO locations (
                     id, name_vi, name_en, category, sub_category,

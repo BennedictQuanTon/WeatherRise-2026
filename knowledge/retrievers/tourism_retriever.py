@@ -67,26 +67,30 @@ class TourismRetriever(BaseRetriever):
         )
         if len(t1) >= MIN_RESULTS:
             print(f"[TourismRetriever] Tier 1 hit: {len(t1)} results for '{location}'")
+            # Sort: google_maps_scrape source first
+            t1_sorted = sorted(t1, key=lambda r: 0 if r.payload.get("source") == "google_maps_scrape" else 1)
             return KnowledgeRetrievalResult(
-                data=self._results_to_dicts(t1),
+                data=self._results_to_dicts(t1_sorted),
                 source="qdrant_kb",
                 confidence="high",
-                search_scores=[r.score for r in t1],
+                search_scores=[r.score for r in t1_sorted],
             )
 
         # ── Tier 2: Qdrant relaxed (score ≥ 0.50, no location filter) ──
         t2 = await self._search_tier2(query=query, limit=limit)
         if len(t2) >= MIN_RESULTS:
             print(f"[TourismRetriever] Tier 2 hit: {len(t2)} results for '{location}' (low confidence)")
+            # Sort: google_maps_scrape source first
+            t2_sorted = sorted(t2, key=lambda r: 0 if r.payload.get("source") == "google_maps_scrape" else 1)
             return KnowledgeRetrievalResult(
-                data=self._results_to_dicts(t2),
+                data=self._results_to_dicts(t2_sorted),
                 source="qdrant_kb_low_confidence",
                 confidence="medium",
                 warnings=[
                     f"No precise KB data for '{location}'. Results may not be location-specific.",
                     "Live fetch recommended for accurate results.",
                 ],
-                search_scores=[r.score for r in t2],
+                search_scores=[r.score for r in t2_sorted],
             )
 
         # ── Tier 3: Overpass OSM Live Fetch ───────────────────────

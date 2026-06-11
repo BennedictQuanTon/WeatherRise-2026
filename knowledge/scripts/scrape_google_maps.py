@@ -25,17 +25,17 @@ APIFY_RUN_URL = "https://api.apify.com/v2/acts/compass~crawler-google-places/run
 
 # Comprehensive search terms to cover all types of attractions in Da Nang
 DEFAULT_QUERIES = [
-    "địa điểm du lịch đà nẵng",
-    "bãi biển đẹp đà nẵng",
-    "chùa nổi tiếng đà nẵng",
-    "bảo tàng đà nẵng",
-    "khu vui chơi giải trí đà nẵng",
-    "địa điểm check-in đà nẵng",
-    "công viên đẹp đà nẵng",
-    "nhà thờ ở đà nẵng",
-    "cầu đẹp đà nẵng",
-    "điểm tham quan đà nẵng",
-    "quán cafe nổi tiếng đà nẵng"
+    "tourist attraction",
+    "bãi biển đẹp",
+    "chùa nổi tiếng",
+    "bảo tàng",
+    "khu vui chơi giải trí",
+    "địa điểm check-in",
+    "công viên đẹp",
+    "nhà thờ",
+    "cầu nổi tiếng",
+    "quán cafe đẹp",
+    "nhà hàng nổi tiếng"
 ]
 
 
@@ -95,6 +95,7 @@ async def run_scraper(apify_token: str, queries: list, max_places: int = 100):
     # Configure input payload for apify/google-maps-scraper
     payload = {
         "searchStringsArray": queries,
+        "locationQuery": "Da Nang, Vietnam",
         "maxCrawledPlacesPerSearch": max_places,
         "language": "vi",
         "includeReviews": False,
@@ -198,12 +199,17 @@ async def main():
         if not is_indoor:
             weather_rules = {"max_wind_kmh": 40, "max_rain_prob_pct": 60}
             
+        # Classify main category: cafes and restaurants go to 'restaurant'
+        main_category = "attraction"
+        if "cafe" in vibe_tags or "restaurant" in vibe_tags:
+            main_category = "restaurant"
+
         normalized_places.append({
             "place_id": pid,
             "source": "google_maps_scrape",
             "name_vi": name,
             "name_en": name,
-            "category": "attraction",
+            "category": main_category,
             "sub_category": sub_cat,
             "address": item.get("address", ""),
             "city": "Da Nang",
