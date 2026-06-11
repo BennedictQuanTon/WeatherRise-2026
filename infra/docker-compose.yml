@@ -76,10 +76,19 @@ services:
       - ../.env
     environment:
       - REDIS_URL=redis://redis:6379
-      - OPENWEATHERMAP_API_KEY=${OPENWEATHERMAP_API_KEY}
+      - POSTGRES_URL=postgresql://weatherise:weatherise@postgres:5432/weatherise
+      - QDRANT_URL=http://vector-db:6333
+      - NIM_EMBED_BASE_URL=http://host.docker.internal:8002/v1
+      - NIM_EMBED_MODEL=nvidia/nv-embedqa-e5-v5
       - OPEN_METEO_BASE_URL=https://api.open-meteo.com/v1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      vector-db:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
