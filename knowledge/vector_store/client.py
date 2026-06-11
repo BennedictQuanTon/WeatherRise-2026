@@ -22,7 +22,7 @@ class SearchResult:
     source: str = "qdrant_kb"
 
 
-async def embed_texts(texts: List[str]) -> List[List[float]]:
+async def embed_texts(texts: List[str], input_type: str = "passage") -> List[List[float]]:
     """
     Embed texts using NIM NV-EmbedQA-E5-v5 API.
     Returns list of embedding vectors (1024-dim each).
@@ -35,7 +35,7 @@ async def embed_texts(texts: List[str]) -> List[List[float]]:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 r = await client.post(
                     f"{NIM_EMBED_BASE_URL}/embeddings",
-                    json={"model": NIM_EMBED_MODEL, "input": batch},
+                    json={"model": NIM_EMBED_MODEL, "input": batch, "input_type": input_type},
                     headers={"Content-Type": "application/json"},
                 )
                 r.raise_for_status()
@@ -70,7 +70,7 @@ class VectorStoreClient:
         """
         try:
             # 1. Embed the query
-            embeddings = await embed_texts([query_text])
+            embeddings = await embed_texts([query_text], input_type="query")
             vector = embeddings[0]
 
             # 2. Build Qdrant filter if provided
