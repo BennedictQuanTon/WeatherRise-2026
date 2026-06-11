@@ -80,7 +80,7 @@ class TourismRetriever(BaseRetriever):
         t2 = await self._search_tier2(query=query, limit=limit)
         
         # Apply geographic filter to prevent cross-city leakage (e.g., Da Nang places for a Hoi An query)
-        MAX_TIER2_KM = 50.0
+        MAX_TIER2_KM = 15.0
         from agents.context_agents.tourism_agent.trip_context_planner import haversine_km
         t2_filtered = [
             r for r in t2
@@ -269,8 +269,8 @@ class TourismRetriever(BaseRetriever):
                     )
                     AND is_opening = true
                     ORDER BY 
-                        CASE WHEN source = 'google_maps_scrape' THEN 0 ELSE 1 END ASC,
                         dist_m ASC, 
+                        CASE WHEN source = 'google_maps_scrape' THEN 0 ELSE 1 END ASC,
                         avg_rating DESC
                     LIMIT $4
                 """

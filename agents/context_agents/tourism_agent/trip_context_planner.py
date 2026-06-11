@@ -231,12 +231,9 @@ def build_trip_plan(
                     if available:
                         best_rest = min(
                             available,
-                            key=lambda r: (
-                                0 if "search_score" in r or r.get("source") == "google_maps_scrape" else 1,
-                                haversine_km(
-                                    current_anchor.get("latitude", 0), current_anchor.get("longitude", 0),
-                                    r.get("latitude", 0), r.get("longitude", 0)
-                                )
+                            key=lambda r: haversine_km(
+                                current_anchor.get("latitude", 0), current_anchor.get("longitude", 0),
+                                r.get("latitude", 0), r.get("longitude", 0)
                             )
                         )
 
@@ -340,7 +337,7 @@ def build_trip_plan(
                 })
                 current_anchor = place
         # Theme per day based on dominant area
-        theme = "Explore Da Nang"
+        theme = f"Explore {location}"
         if day_attractions:
             tags = []
             for a in day_attractions:
@@ -355,7 +352,7 @@ def build_trip_plan(
         days.append({
             "day": day_num,
             "theme": theme,
-            "primary_area": "Da Nang",
+            "primary_area": location,
             "stops": stops,
             "backup_options": backup_options,
         })
