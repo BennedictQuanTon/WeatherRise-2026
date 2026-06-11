@@ -115,6 +115,3 @@ async def resolve_coordinates(req: LocationRequest) -> Dict[str, Any]:
             errors=[str(e)],
         )
 
-import httpx
-import hashlib
-import json

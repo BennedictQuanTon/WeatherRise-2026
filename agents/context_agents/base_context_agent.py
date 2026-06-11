@@ -14,6 +14,19 @@ MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:9000")
 
 class BaseContextAgent:
     domain: str = "base"
+    _http_client: httpx.AsyncClient | None = None
+
+    @classmethod
+    def get_http_client(cls) -> httpx.AsyncClient:
+        if cls._http_client is None or cls._http_client.is_closed:
+            cls._http_client = httpx.AsyncClient(
+                timeout=15.0,
+                limits=httpx.Limits(
+                    max_connections=50,
+                    max_keepalive_connections=20,
+                ),
+            )
+        return cls._http_client
 
     def get_required_context(self, parsed: ParserOutput) -> List[str]:
         """Override in subclasses to return domain-specific context list."""
@@ -33,13 +46,13 @@ class BaseContextAgent:
         try:
             # Phase 1 Bug Fix: dot → slash for REST path
             url_path = route.replace(".", "/")
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                r = await client.post(
-                    f"{MCP_SERVER_URL}/tools/{url_path}",
-                    json=payload,
-                )
-                r.raise_for_status()
-                return r.json()
+            client = self.get_http_client()
+            r = await client.post(
+                f"{MCP_SERVER_URL}/tools/{url_path}",
+                json=payload,
+            )
+            r.raise_for_status()
+            return r.json()
         except Exception as e:
             print(f"[MCP] Error calling {route}: {e}")
             return {}

@@ -12,15 +12,22 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _clamp_prob(value: Any) -> float | None:
+def _percent_to_prob(value: Any) -> float | None:
     if value is None:
         return None
     try:
         prob = float(value)
     except (TypeError, ValueError):
         return None
-    if prob > 1:
-        prob = prob / 100.0
+    return max(0.0, min(1.0, prob / 100.0))
+
+def _ratio_to_prob(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        prob = float(value)
+    except (TypeError, ValueError):
+        return None
     return max(0.0, min(1.0, prob))
 
 
@@ -93,7 +100,7 @@ class OpenMeteoNormalizer(BaseWeatherNormalizer):
                     temperature_c=_at(hourly.get("temperature_2m"), idx),
                     humidity_percent=_at(hourly.get("relative_humidity_2m"), idx),
                     precipitation_mm=_at(hourly.get("precipitation"), idx),
-                    rain_probability=_clamp_prob(_at(hourly.get("precipitation_probability"), idx)),
+                    rain_probability=_percent_to_prob(_at(hourly.get("precipitation_probability"), idx)),
                     wind_speed_kmh=_at(hourly.get("wind_speed_10m"), idx),
                     wind_gust_kmh=_at(hourly.get("wind_gusts_10m"), idx),
                     wind_direction_deg=_at(hourly.get("wind_direction_10m"), idx),
@@ -124,7 +131,7 @@ class WeatherAPINormalizer(BaseWeatherNormalizer):
                         feels_like_c=_num(hour.get("feelslike_c")),
                         humidity_percent=_num(hour.get("humidity")),
                         precipitation_mm=_num(hour.get("precip_mm")),
-                        rain_probability=_clamp_prob(hour.get("chance_of_rain", day_rain)),
+                        rain_probability=_percent_to_prob(hour.get("chance_of_rain", day_rain)),
                         wind_speed_kmh=_num(hour.get("wind_kph")),
                         wind_gust_kmh=_num(hour.get("gust_kph")),
                         wind_direction_deg=_num(hour.get("wind_degree")),
@@ -183,9 +190,9 @@ class TomorrowIONormalizer(BaseWeatherNormalizer):
                     feels_like_c=_num(values.get("temperatureApparent")),
                     humidity_percent=_num(values.get("humidity")),
                     precipitation_mm=_num(values.get("rainIntensity") or values.get("precipitationIntensity")),
-                    rain_probability=_clamp_prob(values.get("precipitationProbability")),
-                    wind_speed_kmh=_maybe_ms_to_kmh(values.get("windSpeed")),
-                    wind_gust_kmh=_maybe_ms_to_kmh(values.get("windGust")),
+                    rain_probability=_percent_to_prob(values.get("precipitationProbability")),
+                    wind_speed_kmh=_ms_to_kmh(values.get("windSpeed")),
+                    wind_gust_kmh=_ms_to_kmh(values.get("windGust")),
                     wind_direction_deg=_num(values.get("windDirection")),
                     pressure_hpa=_num(values.get("pressureSurfaceLevel")),
                     visibility_km=_num(values.get("visibility")),
@@ -221,7 +228,7 @@ class VisualCrossingNormalizer(BaseWeatherNormalizer):
                         feels_like_c=_num(hour.get("feelslike")),
                         humidity_percent=_num(hour.get("humidity")),
                         precipitation_mm=_num(hour.get("precip")),
-                        rain_probability=_clamp_prob(hour.get("precipprob")),
+                        rain_probability=_percent_to_prob(hour.get("precipprob")),
                         wind_speed_kmh=_num(hour.get("windspeed")),
                         wind_gust_kmh=_num(hour.get("windgust")),
                         wind_direction_deg=_num(hour.get("winddir")),
@@ -259,7 +266,7 @@ class OpenWeatherMapNormalizer(BaseWeatherNormalizer):
                     feels_like_c=_num(main.get("feels_like")),
                     humidity_percent=_num(main.get("humidity")),
                     precipitation_mm=_num(rain.get("1h") or rain.get("3h")),
-                    rain_probability=_clamp_prob(item.get("pop")),
+                    rain_probability=_ratio_to_prob(item.get("pop")),
                     wind_speed_kmh=_ms_to_kmh(wind.get("speed")),
                     wind_gust_kmh=_ms_to_kmh(wind.get("gust")),
                     wind_direction_deg=_num(wind.get("deg")),
@@ -364,11 +371,7 @@ def _at(values: Any, idx: int) -> float | None:
     return _num(values[idx])
 
 
-def _maybe_ms_to_kmh(value: Any) -> float | None:
-    number = _num(value)
-    if number is None:
-        return None
-    return round(number * 3.6, 3) if number < 65 else number
+
 
 
 def _parse_7timer_init(init: Any) -> datetime | None:

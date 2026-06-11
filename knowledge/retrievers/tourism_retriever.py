@@ -78,10 +78,19 @@ class TourismRetriever(BaseRetriever):
 
         # ── Tier 2: Qdrant relaxed (score ≥ 0.50, no location filter) ──
         t2 = await self._search_tier2(query=query, limit=limit)
-        if len(t2) >= MIN_RESULTS:
-            print(f"[TourismRetriever] Tier 2 hit: {len(t2)} results for '{location}' (low confidence)")
+        
+        # Apply geographic filter to prevent cross-city leakage (e.g., Da Nang places for a Hoi An query)
+        MAX_TIER2_KM = 50.0
+        from agents.context_agents.tourism_agent.trip_context_planner import haversine_km
+        t2_filtered = [
+            r for r in t2
+            if haversine_km(lat, lon, r.payload.get("latitude", 0), r.payload.get("longitude", 0)) <= MAX_TIER2_KM
+        ]
+        
+        if len(t2_filtered) >= MIN_RESULTS:
+            print(f"[TourismRetriever] Tier 2 hit: {len(t2_filtered)} results for '{location}' (low confidence)")
             # Sort: google_maps_scrape source first
-            t2_sorted = sorted(t2, key=lambda r: 0 if r.payload.get("source") == "google_maps_scrape" else 1)
+            t2_sorted = sorted(t2_filtered, key=lambda r: 0 if r.payload.get("source") == "google_maps_scrape" else 1)
             return KnowledgeRetrievalResult(
                 data=self._results_to_dicts(t2_sorted),
                 source="qdrant_kb_low_confidence",
@@ -297,7 +306,84 @@ class TourismRetriever(BaseRetriever):
                         confidence="high",
                     )
             except Exception as e:
-                print(f"[TourismRetriever] PostgreSQL query failed: {e}. Falling back to mock...")
+                print(f"[TourismRetriever] PostgreSQL query failed: {e}. Falling back to live fetch...")
+
+        # ── Tier 3: Live Fetch (Apify Google Maps) for Restaurants ────
+        import os
+        apify_token = os.getenv("APIFY_TOKEN")
+        if apify_token:
+            print(f"[TourismRetriever] KB miss for restaurants near '{lat},{lon}' → Apify Google Maps live fetch")
+            try:
+                from knowledge.scripts.scrape_google_maps import run_scraper, map_price_tier, classify_indoor, map_vibe_tags
+                from knowledge.rag_pipeline.ingestion import async_ingest_places
+                raw_items = await run_scraper(apify_token=apify_token, queries=[f"restaurants near {lat},{lon}"], max_places=10)
+                
+                normalized_places = []
+                for item in raw_items:
+                    place_id = item.get("placeId")
+                    if not place_id: continue
+                    pid = f"gmaps_{place_id}"
+                    
+                    name = item.get("title") or item.get("displayName")
+                    if not name: continue
+                        
+                    loc_val = item.get("location") or {}
+                    lat_val = loc_val.get("lat")
+                    lng_val = loc_val.get("lng")
+                    if not lat_val or not lng_val: continue
+                        
+                    categories = item.get("categories") or []
+                    sub_cat = categories[0] if categories else "restaurant"
+                    is_indoor = classify_indoor(categories)
+                    vibe_tags = map_vibe_tags(categories)
+                    if "restaurant" not in vibe_tags and "cafe" not in vibe_tags:
+                        vibe_tags.append("restaurant")
+                    
+                    opening_hours = item.get("openingHours") or {}
+                    image_urls = item.get("imageUrls") or []
+                    photo_url = image_urls[0] if image_urls else ""
+                    
+                    normalized_places.append({
+                        "place_id": pid,
+                        "source": "google_maps_scrape",
+                        "name_vi": name,
+                        "name_en": name,
+                        "category": "restaurant",
+                        "sub_category": sub_cat,
+                        "address": item.get("address", ""),
+                        "city": location,
+                        "country": "Vietnam",
+                        "latitude": float(lat_val),
+                        "longitude": float(lng_val),
+                        "avg_rating": float(item.get("rating") or 0.0),
+                        "total_reviews": int(item.get("reviewCount") or 0),
+                        "price_tier": map_price_tier(item.get("priceLevel")),
+                        "avg_duration_minutes": 60,
+                        "is_indoor": is_indoor,
+                        "rain_sensitive": not is_indoor,
+                        "uv_sensitive": False,
+                        "bad_weather_rules": {},
+                        "vibe_tags": vibe_tags,
+                        "is_opening": True,
+                        "photo_url": photo_url,
+                        "phone": item.get("phone", ""),
+                        "website": item.get("website", ""),
+                        "opening_hours": opening_hours,
+                    })
+                
+                if normalized_places:
+                    print(f"[TourismRetriever] Apify live fetch succeeded, ingesting {len(normalized_places)} restaurants.")
+                    asyncio.create_task(
+                        async_ingest_places(normalized_places, domain="tourism", source="google_maps_scrape")
+                    )
+                    return KnowledgeRetrievalResult(
+                        data=normalized_places,
+                        source="google_maps_scrape",
+                        confidence="high",
+                        warnings=["Restaurant data fetched live from Google Maps via Apify."],
+                    )
+            except Exception as e:
+                print(f"[TourismRetriever] Apify live fetch for restaurants failed: {e}. Falling back to mock...")
 
         restaurants = self._mock_restaurants
         if near_place_ids:
@@ -308,7 +394,7 @@ class TourismRetriever(BaseRetriever):
             data=restaurants[:limit],
             source="mock_seed",
             confidence="high",
-            warnings=["Using fallback mock restaurant data due to DB unavailable."] if postgres_url else [],
+            warnings=["Using fallback mock restaurant data due to DB/Live Fetch unavailable."] if postgres_url else [],
         )
 
     async def get_weather_rules(self, domain: str = "tourism") -> List[Dict]:

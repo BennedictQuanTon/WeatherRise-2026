@@ -12,6 +12,7 @@ Flow:
   9. Assemble FullyProcessedPayload
 """
 from datetime import datetime, timedelta
+import asyncio
 from typing import List, Dict, Any
 
 from agents.context_agents.base_context_agent import BaseContextAgent
@@ -63,22 +64,30 @@ class TourismContextAgent(BaseContextAgent):
         mcp_ctx = MCPContext()
         mcp_routes_called = []
 
-        # ── 1. Resolve Coordinates ───────────────────────────────
-        coord_result = await self.call_mcp("location.resolveCoordinates", {"location": location})
+        # ── 1. Phase I: Resolve Coordinates and Time Range ────────────────
+        tasks_phase1 = [
+            self.call_mcp("location.resolveCoordinates", {"location": location})
+        ]
+        has_time_raw = bool(parsed.time_range and parsed.time_range.raw_text)
+        if has_time_raw:
+            tasks_phase1.append(self.call_mcp("time.resolveTimeRange", {
+                "raw_text": parsed.time_range.raw_text,
+                "timezone": getattr(parsed.time_range, "timezone", "Asia/Ho_Chi_Minh"),
+            }))
+            
+        results_phase1 = await asyncio.gather(*tasks_phase1)
+        
+        coord_result = results_phase1[0]
         mcp_routes_called.append("location.resolveCoordinates")
-
+        
         coords = coord_result.get("output", coord_result)  # handle both envelope and raw
         lat = coords.get("latitude") or 16.0544
         lon = coords.get("longitude") or 108.2022
         mcp_ctx.coordinates = {"latitude": lat, "longitude": lon}
         parsed.geographical_location.coordinates = mcp_ctx.coordinates
 
-        # ── 2. Resolve Time Range ────────────────────────────────
-        if parsed.time_range and parsed.time_range.raw_text:
-            time_result = await self.call_mcp("time.resolveTimeRange", {
-                "raw_text": parsed.time_range.raw_text,
-                "timezone": getattr(parsed.time_range, "timezone", "Asia/Ho_Chi_Minh"),
-            })
+        if has_time_raw:
+            time_result = results_phase1[1]
             mcp_routes_called.append("time.resolveTimeRange")
             tr = time_result.get("output", time_result)
             if tr.get("start"):
@@ -112,27 +121,124 @@ class TourismContextAgent(BaseContextAgent):
             except Exception:
                 pass
 
-        # ── 3. Weather Forecast ──────────────────────────────────
-        forecast_result = await self.call_mcp("weather.getForecast", {
+        # ── 3. Phase II: Weather Forecast and KB Queries ──────────────────
+        forecast_task = self.call_mcp("weather.getForecast", {
             "latitude": lat,
             "longitude": lon,
             "start_date": getattr(parsed.time_range, "start", None),
             "end_date": getattr(parsed.time_range, "end", None),
         })
-        mcp_routes_called.append("weather.getForecast")
-        if forecast_result:
-            mcp_ctx.weather_forecast = forecast_result
-
-        kb_attractions = await self._retriever.get_attractions(
+        attr_task = self._retriever.get_attractions(
             location=location,
             coordinates=mcp_ctx.coordinates,
             limit=20,
         )
-        kb_restaurants = await self._retriever.get_restaurants(
+        rest_task = self._retriever.get_restaurants(
             location=location,
             coordinates=mcp_ctx.coordinates,
             limit=15,
         )
+
+        forecast_result, kb_attractions, kb_restaurants = await asyncio.gather(
+            forecast_task, attr_task, rest_task
+        )
+
+        # ── Supplement attractions via MCP place.searchPlaces ────────────
+        kb_attr_is_sparse = (
+            not kb_attractions.data
+            or kb_attractions.source in ("mock_seed", "mock")
+            or len(kb_attractions.data) < 5
+        )
+        if kb_attr_is_sparse:
+            print(f"[TourismAgent] KB attractions sparse ({kb_attractions.source}, {len(kb_attractions.data or [])} results). Calling MCP place.searchPlaces...")
+            try:
+                mcp_places_result = await self.call_mcp("place.searchPlaces", {
+                    "location": location,
+                    "lat": lat,
+                    "lon": lon,
+                    "limit": 20,
+                })
+                mcp_attractions = (
+                    mcp_places_result.get("output", {}).get("attractions", [])
+                    if isinstance(mcp_places_result, dict) else []
+                )
+                if mcp_attractions:
+                    existing_ids = {a.get("place_id") for a in (kb_attractions.data or [])}
+                    new_attrs = [a for a in mcp_attractions if a.get("place_id") not in existing_ids]
+                    kb_attractions.data = new_attrs + (kb_attractions.data or [])
+                    kb_attractions.source = mcp_places_result.get("provider", "mcp_place_search")
+                    print(f"[TourismAgent] MCP added {len(new_attrs)} new attractions. Total: {len(kb_attractions.data)}")
+                    mcp_routes_called.append("place.searchPlaces")
+            except Exception as e:
+                print(f"[TourismAgent] MCP place.searchPlaces failed: {e}. Continuing with KB data.")
+
+        # ── Supplement restaurants: per-cluster centroid search ──────────────
+        # The critical insight: attractions may be fetched from remote coordinates
+        # (e.g. Overpass for Hoi An, My Son, Ba Na Hills) that are far from the
+        # city-level lat/lon used for the initial restaurant KB query.
+        # We pre-cluster the attractions (same algorithm as build_trip_plan),
+        # compute each cluster's centroid, and call place.searchRestaurants once
+        # per cluster. This ensures restaurants are always sourced from WHERE the
+        # user will actually be, not just the city center.
+        kb_rest_is_sparse = (
+            not kb_restaurants.data
+            or kb_restaurants.source in ("mock_seed", "mock")
+            or len(kb_restaurants.data) < 8
+        )
+        if kb_rest_is_sparse and kb_attractions.data:
+            from agents.context_agents.tourism_agent.trip_context_planner import cluster_by_distance
+            is_trip = parsed.intent_subtype == "multi_day_trip_planning"
+            duration_days = (
+                (parsed.trip_request.duration_days or 3)
+                if parsed.trip_request else 3
+            )
+            n_clusters = duration_days if is_trip else 1
+            clusters = cluster_by_distance(kb_attractions.data, n_clusters)
+
+            # Compute centroid of each cluster
+            cluster_centroids = []
+            for cluster in clusters:
+                if not cluster:
+                    continue
+                c_lat = sum(a.get("latitude", lat) for a in cluster) / len(cluster)
+                c_lon = sum(a.get("longitude", lon) for a in cluster) / len(cluster)
+                cluster_centroids.append((c_lat, c_lon))
+
+            print(f"[TourismAgent] Calling place.searchRestaurants for {len(cluster_centroids)} cluster centroids...")
+            existing_ids = {r.get("place_id") for r in (kb_restaurants.data or [])}
+            all_new_rests = []
+
+            for c_lat, c_lon in cluster_centroids:
+                try:
+                    mcp_rest_result = await self.call_mcp("place.searchRestaurants", {
+                        "location": location,
+                        "lat": c_lat,
+                        "lon": c_lon,
+                        "radius_km": 10.0,
+                        "limit": 15,
+                    })
+                    mcp_restaurants = (
+                        mcp_rest_result.get("output", {}).get("restaurants", [])
+                        if isinstance(mcp_rest_result, dict) else []
+                    )
+                    for r in mcp_restaurants:
+                        pid = r.get("place_id")
+                        if pid and pid not in existing_ids:
+                            all_new_rests.append(r)
+                            existing_ids.add(pid)
+                except Exception as e:
+                    print(f"[TourismAgent] MCP place.searchRestaurants failed for centroid ({c_lat:.4f},{c_lon:.4f}): {e}")
+
+            if all_new_rests:
+                kb_restaurants.data = all_new_rests + (kb_restaurants.data or [])
+                print(f"[TourismAgent] Per-cluster MCP added {len(all_new_rests)} restaurants. Total: {len(kb_restaurants.data)}")
+                mcp_routes_called.append("place.searchRestaurants")
+            else:
+                print(f"[TourismAgent] Per-cluster MCP returned 0 new restaurants. Existing pool: {len(kb_restaurants.data or [])}.")
+        
+        mcp_routes_called.append("weather.getForecast")
+        if forecast_result:
+            mcp_ctx.weather_forecast = forecast_result
 
         # ── 4b. Extract & Prepend User-Requested Specific Places ─
         preferred_places = []
@@ -213,12 +319,18 @@ class TourismContextAgent(BaseContextAgent):
                 forecast_result.get("output", {}).get("daily_forecasts", [])
                 if isinstance(forecast_result, dict) else []
             )
+            # Build a lookup for indoor attractions to use as map-accurate backup options
+            indoor_attrs = [
+                a for a in (kb_attractions.data or [])
+                if a.get("is_indoor", False)
+            ][:6]
             trip_plan = build_trip_plan(
                 attractions=kb_attractions.data,
                 restaurants=kb_restaurants.data,
                 duration_days=duration_days,
                 location=location,
                 weather_forecasts=None,  # Handled by ContextAssembler
+                indoor_backup_pool=indoor_attrs,
             )
             mcp_ctx.trip_plan_context = trip_plan
 

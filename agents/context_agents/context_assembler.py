@@ -132,25 +132,43 @@ def assemble_context(
                 else:
                     day_temp_range = df.get("dominant_weather")
                 
-                if df.get("max_rain_prob_pct", 0) >= 60:
-                    enriched_stops = sorted(
-                        enriched_stops,
-                        key=lambda s: (0 if s.get("is_indoor") else 1, s.get("order", 99))
-                    )
-                    # Re-number after sort
-                    for i, s in enumerate(enriched_stops):
-                        s["order"] = i + 1
-            else:
-                from datetime import datetime, timedelta
-                try:
-                    start_dt = datetime.strptime(parsed.time_range.start, "%Y-%m-%d")
-                    day_date = (start_dt + timedelta(days=day_idx)).strftime("%Y-%m-%d")
-                except Exception:
-                    pass
+            is_rainy_day = (day_rain_prob is not None and day_rain_prob >= 60)
+            optimized_stops = []
+            backup_pool = list(day.get("backup_options", []))
+
+            for stop in enriched_stops:
+                # Truncate and strip cosmetic data fields to maximize context window density
+                pruned_stop = {
+                    "order": stop.get("order"),
+                    "place_id": stop.get("place_id"),
+                    "name": stop.get("name"),
+                    "lat": stop.get("lat"),
+                    "lon": stop.get("lon"),
+                    "time_block": stop.get("time_block"),
+                    "planned_time": stop.get("planned_time"),
+                    "planned_time_window": stop.get("planned_time_window"),
+                    "is_indoor": bool(stop.get("is_indoor", False)),
+                    "category": stop.get("category", "attraction")
+                }
+
+                # Evaluate safety constraints on rainy days
+                if is_rainy_day and not pruned_stop["is_indoor"] and pruned_stop["category"] == "attraction":
+                    if backup_pool:
+                        backup_node = backup_pool.pop(0)
+                        # Overwrite the slot properties in-place, preserving chronology
+                        pruned_stop.update({
+                            "place_id": backup_node.get("place_id"),
+                            "name": f"{backup_node.get('name')} (Rain Alternate)",
+                            "is_indoor": True
+                        })
+                optimized_stops.append(pruned_stop)
+
+            # Keep timeline anchors fixed by locking order sequencing
+            final_stops = sorted(optimized_stops, key=lambda s: s.get("order", 99))
 
             enriched_days.append({
                 **day,
-                "stops": enriched_stops,
+                "stops": final_stops,
                 "date": day_date,
                 "weather_condition": day_weather,
                 "temp_range": day_temp_range,

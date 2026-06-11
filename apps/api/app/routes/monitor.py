@@ -43,6 +43,10 @@ async def _event_stream(queue: asyncio.Queue, request: Request) -> AsyncIterator
         # Send buffered logs first (last 50)
         for entry in _LOG_BUFFER[-50:]:
             yield f"data: {json.dumps(entry)}\n\n"
+        
+        # Immediate ping to flush headers
+        yield f"data: {json.dumps({'type': 'ping', 'ts': int(time.time() * 1000)})}\n\n"
+        
         # Stream new events
         while True:
             # Check if client disconnected

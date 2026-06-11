@@ -30,3 +30,12 @@ Thumbs.db
 
 # Data (large files)
 knowledge/seed_data/tourism/.open_meteo_ref.py
+
+# Implementation Plans
+optimizer_fix_implementation_plan.md
+optimizer_fix_guidelines.md
+
+# Verification
+verify_optimizer.py
+simulate_prompts.py
+simulated_prompts_output.txt
