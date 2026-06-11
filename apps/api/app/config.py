@@ -24,7 +24,14 @@ class Settings(BaseSettings):
 
     # Weather
     openweathermap_api_key: str = ""
+    owm_api_key: str = ""
     open_meteo_base_url: str = "https://api.open-meteo.com/v1"
+    openweathermap_base_url: str = "https://api.openweathermap.org/data/2.5"
+    weatherapi_base_url: str = "https://api.weatherapi.com/v1"
+    tomorrow_io_base_url: str = "https://api.tomorrow.io/v4"
+    visual_crossing_base_url: str = "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services"
+    seven_timer_base_url: str = "https://www.7timer.info/bin/api.pl"
+    stormglass_base_url: str = "https://api.stormglass.io/v2"
     weather_evidence_dir: str = "/raid/team/weatherise/weather_evidence"
     weather_evidence_fallback_dir: str = "data/weather_evidence"
     nim_weather_arbiter_enabled: bool = True

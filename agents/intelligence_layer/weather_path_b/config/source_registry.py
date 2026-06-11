@@ -7,6 +7,23 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
+
+
+def _load_project_env() -> None:
+    """Load Path B provider keys from local env files when available."""
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        return
+
+    project_root = Path(__file__).resolve().parents[4]
+    load_dotenv(project_root / ".env", override=False)
+    load_dotenv(project_root / ".env.dev", override=False)
+    load_dotenv(project_root / ".env.demo.local", override=True)
+
+
+_load_project_env()
 
 
 @dataclass(frozen=True)

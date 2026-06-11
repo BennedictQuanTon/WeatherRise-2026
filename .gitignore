@@ -8,6 +8,7 @@ venv/
 dist/
 build/
 .env
+.env.demo.local
 
 # Node
 node_modules/

@@ -1,6 +1,25 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+try:
+    from dotenv import load_dotenv
+except ImportError:  # pragma: no cover - dependency is included in API requirements
+    load_dotenv = None
+
+
+def _load_project_env() -> None:
+    """Load local env files before importing routes that read os.environ."""
+    if load_dotenv is None:
+        return
+    project_root = Path(__file__).resolve().parents[3]
+    load_dotenv(project_root / ".env", override=False)
+    load_dotenv(project_root / ".env.dev", override=False)
+    load_dotenv(project_root / ".env.demo.local", override=True)
+
+
+_load_project_env()
 
 from apps.api.app.routes.health import router as health_router
 from apps.api.app.routes.chat import router as chat_router
