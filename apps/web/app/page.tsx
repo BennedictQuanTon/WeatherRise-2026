@@ -845,7 +845,7 @@ export default function HomePage() {
               <div className="flex flex-col gap-4 min-h-0">
 
                 {/* Query Composer */}
-                <div className="flex-1 rounded-2xl border border-[var(--color-border)] bg-[var(--bg-secondary)] p-5 shadow-xl space-y-4 overflow-y-auto min-h-0">
+                <div className="flex-shrink-0 rounded-2xl border border-[var(--color-border)] bg-[var(--bg-secondary)] p-5 shadow-xl space-y-4 min-h-0">
                   <div>
                     <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-brand)]">What would you like to know?</h3>
                     <p className="text-[10px] text-[var(--color-text-muted)] mt-1">Get intelligent weather risk insights for your plans.</p>
@@ -872,9 +872,9 @@ export default function HomePage() {
                   <div className="pt-1 text-center text-[10px] text-[var(--color-text-muted)] border-t border-[var(--color-border-subtle)] pt-3">Weatherise AI • Powered by NVIDIA NIM</div>
                 </div>
 
-                {/* Small Map — 1/4 of right column (fixed 260px) */}
-                <div className="h-[260px] rounded-2xl border border-[var(--color-border)] bg-[var(--bg-secondary)] shadow-xl overflow-hidden flex-shrink-0">
-                  <div className="flex items-center gap-2 px-4 py-2 border-b border-white/10 bg-slate-900/40">
+                {/* Small Map — expands to fill remaining space */}
+                <div className="flex-1 rounded-2xl border border-[var(--color-border)] bg-[var(--bg-secondary)] shadow-xl overflow-hidden flex flex-col min-h-0">
+                  <div className="flex items-center gap-2 px-4 py-2 border-b border-white/10 bg-slate-900/40 flex-shrink-0">
                     <Map size={11} className="text-cyan-400" />
                     <span className="text-[10px] font-bold text-slate-200">
                       {latestResult?.trip_plan ? `Trip Map · ${latestResult.trip_plan.location}` : latestResult?.location ? `Location · ${latestResult.location}` : "Map"}
@@ -885,7 +885,7 @@ export default function HomePage() {
                       </span>
                     )}
                   </div>
-                  <div style={{ height: "218px" }}>
+                  <div className="flex-1 min-h-0 w-full relative">
                     <TripMapPanel 
                       tripPlan={latestResult?.trip_plan} 
                       coordinates={latestResult?.coordinates}
