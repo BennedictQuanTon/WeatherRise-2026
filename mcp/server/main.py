@@ -2,6 +2,7 @@
 MCP Server — V3 Tool gateway for all Weatherise external data routes.
 """
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Any, Dict
 
@@ -46,4 +47,7 @@ async def health():
 
 @app.post("/tools/{route_name}")
 async def tool_dispatcher(route_name: str, body: Dict[str, Any]):
+    if "." in route_name:
+        url_path = route_name.replace(".", "/")
+        return RedirectResponse(url=f"/tools/{url_path}", status_code=307)
     raise HTTPException(status_code=404, detail=f"Unknown MCP route: {route_name}")

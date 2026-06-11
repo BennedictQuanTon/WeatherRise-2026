@@ -62,8 +62,8 @@ async def _query_postgres(req: RestaurantSearchRequest) -> List[Dict]:
             )
             AND is_opening = true
             ORDER BY 
-                CASE WHEN source = 'google_maps_scrape' THEN 0 ELSE 1 END ASC,
                 dist_m ASC, 
+                CASE WHEN source = 'google_maps_scrape' THEN 0 ELSE 1 END ASC,
                 avg_rating DESC
             LIMIT $4
         """

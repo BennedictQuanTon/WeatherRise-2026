@@ -13,7 +13,10 @@ Flow:
 """
 from datetime import datetime, timedelta
 import asyncio
+import time
 from typing import List, Dict, Any
+
+from apps.api.app.routes.monitor import emit
 
 from agents.context_agents.base_context_agent import BaseContextAgent
 from agents.context_agents.context_gap_report import build_context_gap_report
@@ -65,6 +68,7 @@ class TourismContextAgent(BaseContextAgent):
         mcp_routes_called = []
 
         # ── 1. Phase I: Resolve Coordinates and Time Range ────────────────
+        t_phase1 = time.time()
         tasks_phase1 = [
             self.call_mcp("location.resolveCoordinates", {"location": location})
         ]
@@ -121,7 +125,11 @@ class TourismContextAgent(BaseContextAgent):
             except Exception:
                 pass
 
+        ms_phase1 = int((time.time() - t_phase1) * 1000)
+        emit("step", "TourismAgent", "Phase I: Coordinates & Time resolved", duration_ms=ms_phase1)
+
         # ── 3. Phase II: Weather Forecast and KB Queries ──────────────────
+        t_phase2 = time.time()
         forecast_task = self.call_mcp("weather.getForecast", {
             "latitude": lat,
             "longitude": lon,
@@ -143,7 +151,14 @@ class TourismContextAgent(BaseContextAgent):
             forecast_task, attr_task, rest_task
         )
 
+        ms_phase2 = int((time.time() - t_phase2) * 1000)
+        emit("step", "TourismAgent", "Phase II: KB & Forecast fetch", duration_ms=ms_phase2, data={
+            "kb_attractions": len(kb_attractions.data or []),
+            "kb_restaurants": len(kb_restaurants.data or [])
+        })
+
         # ── Supplement attractions via MCP place.searchPlaces ────────────
+        t_mcp = time.time()
         kb_attr_is_sparse = (
             not kb_attractions.data
             or kb_attractions.source in ("mock_seed", "mock")
@@ -236,6 +251,12 @@ class TourismContextAgent(BaseContextAgent):
             else:
                 print(f"[TourismAgent] Per-cluster MCP returned 0 new restaurants. Existing pool: {len(kb_restaurants.data or [])}.")
         
+        if kb_attr_is_sparse or (kb_rest_is_sparse and kb_attractions.data):
+            ms_mcp = int((time.time() - t_mcp) * 1000)
+            emit("step", "TourismAgent", "Phase III: MCP Fallbacks", duration_ms=ms_mcp, data={
+                "mcp_routes": [r for r in mcp_routes_called if "place" in r]
+            })
+
         mcp_routes_called.append("weather.getForecast")
         if forecast_result:
             mcp_ctx.weather_forecast = forecast_result
@@ -309,6 +330,7 @@ class TourismContextAgent(BaseContextAgent):
         mcp_ctx.restaurants = kb_restaurants.data
 
         # ── 7. Build Trip Plan (if multi-day) ────────────────────
+        t_plan = time.time()
         is_trip = parsed.intent_subtype == "multi_day_trip_planning"
         if is_trip and kb_attractions.data:
             duration_days = (
@@ -333,6 +355,10 @@ class TourismContextAgent(BaseContextAgent):
                 indoor_backup_pool=indoor_attrs,
             )
             mcp_ctx.trip_plan_context = trip_plan
+
+        if is_trip:
+            ms_plan = int((time.time() - t_plan) * 1000)
+            emit("step", "TourismAgent", "Phase IV: Trip Planning", duration_ms=ms_plan)
 
         # ── 8. Assemble + Entity Link + Forecast Enrich ──────────
         return assemble_context(

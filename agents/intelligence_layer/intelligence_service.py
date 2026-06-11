@@ -16,7 +16,10 @@ Error handling:
 """
 
 import traceback
+import time
 from typing import Any
+
+from apps.api.app.routes.monitor import emit
 
 from .schemas import (
     FullyProcessedJSON,
@@ -75,7 +78,10 @@ class IntelligenceService:
             IntelligenceOutput with prediction, recommendation, risk, explanation.
         """
         try:
+            t_path_b = time.time()
             gold_weather_decision = await self.path_b_service.run(processed_json)
+            ms_path_b = int((time.time() - t_path_b) * 1000)
+            emit("step", "Intelligence", "Path B Weather Consensus", duration_ms=ms_path_b)
         except Exception as exc:
             print(f"[Intelligence] Path B failed: {exc}")
             traceback.print_exc()
@@ -89,15 +95,24 @@ class IntelligenceService:
             )
 
         # 3. Run prediction engine (deterministic)
+        t_pred = time.time()
         prediction = self.prediction_engine.predict(processed_json, gold_weather_decision)
+        ms_pred = int((time.time() - t_pred) * 1000)
+        emit("step", "Intelligence", "Prediction Engine Risk Scoring", duration_ms=ms_pred)
 
         # 4. Build NIM prompt
+        t_prompt = time.time()
         messages = self.prompt_builder.build_path_b_prompt(
             processed_json, gold_weather_decision, prediction
         )
+        ms_prompt = int((time.time() - t_prompt) * 1000)
+        emit("step", "Intelligence", "Prompt Building", duration_ms=ms_prompt)
 
         # 5. Call NIM LLM
+        t_nim = time.time()
         nim_response = await self.nim_client.chat(messages)
+        ms_nim = int((time.time() - t_nim) * 1000)
+        emit("step", "Intelligence", "NIM LLM Reasoning Call", duration_ms=ms_nim)
 
         # 6. Build final response
         return self.response_builder.build(
