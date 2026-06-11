@@ -46,6 +46,8 @@ services:
       - NIM_EMBED_BASE_URL=http://host.docker.internal:8002/v1
       - NIM_LLM_MODEL=nvidia/nemotron-3-super-120b-a12b
       - NIM_EMBED_MODEL=nvidia/nv-embedqa-e5-v5
+      - PARSER_LLM_BASE_URL=http://host.docker.internal:8003/v1
+      - PARSER_LLM_MODEL=weatherise-parser-qwen35-27b
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

@@ -91,12 +91,13 @@ function createNumberedIcon(order: number, color: string, isIndoor: boolean) {
 // ── Fit Map Bounds Component ───────────────────────────────────
 function FitBoundsComponent({ coords }: { coords: [number, number][] }) {
   const map = useMap();
+  const coordsStr = JSON.stringify(coords);
   useEffect(() => {
     if (coords && coords.length > 0) {
       const bounds = L.latLngBounds(coords);
       map.fitBounds(bounds, { padding: [30, 30] });
     }
-  }, [coords, map]);
+  }, [coordsStr, map]);
   return null;
 }
 
@@ -132,7 +133,7 @@ export default function TripMapPanel({
       {/* ── Map ───────────────────────────────────────────────── */}
       <div className="flex-1 min-h-0 relative w-full h-full">
         <MapContainer
-          key={`map-${activeDay}-${centerLat}-${centerLon}`}
+          key="weatherise-leaflet-map"
           center={[centerLat, centerLon]}
           zoom={13}
           style={{ height: "100%", width: "100%", background: "#0f172a" }}
