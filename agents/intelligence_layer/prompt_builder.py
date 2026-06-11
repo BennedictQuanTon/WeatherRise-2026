@@ -43,12 +43,14 @@ class NIMPromptBuilder:
             raw_input = processed_json.raw_user_input
             constraints = processed_json.user_constraints
             knowledge = processed_json.knowledge_context
+            mcp_ctx = processed_json.mcp_context
         else:
             domain = processed_json.get("domain", "tourism")
             intent = processed_json.get("intent", "")
             raw_input = processed_json.get("raw_user_input", "")
             constraints = processed_json.get("user_constraints", [])
             knowledge = processed_json.get("knowledge_context", {})
+            mcp_ctx = processed_json.get("mcp_context", {})
 
         # Extract prediction result
         if hasattr(prediction_result, "model_dump"):
@@ -71,6 +73,7 @@ class NIMPromptBuilder:
             "raw_user_input": raw_input,
             "user_constraints": constraints,
             "knowledge_context": knowledge,
+            "mcp_context": mcp_ctx,
             "weather_data_quality": weather_quality,
             "prediction_engine_result": pred_dict,
             "required_output_schema": REQUIRED_OUTPUT_SCHEMA,
@@ -95,12 +98,14 @@ class NIMPromptBuilder:
             raw_input = processed_json.raw_user_input
             constraints = processed_json.user_constraints
             knowledge = processed_json.knowledge_context
+            mcp_ctx = processed_json.mcp_context
         else:
             domain = processed_json.get("domain", "tourism")
             intent = processed_json.get("intent", "")
             raw_input = processed_json.get("raw_user_input", "")
             constraints = processed_json.get("user_constraints", [])
             knowledge = processed_json.get("knowledge_context", {})
+            mcp_ctx = processed_json.get("mcp_context", {})
 
         pred_dict = prediction_result.model_dump() if hasattr(prediction_result, "model_dump") else prediction_result
         weather_dict = (
@@ -116,6 +121,7 @@ class NIMPromptBuilder:
             "raw_user_input": raw_input,
             "user_constraints": constraints,
             "knowledge_context": knowledge,
+            "mcp_context": mcp_ctx,
             "gold_weather_decision": weather_dict,
             "weather_confidence": weather_dict.get("confidence") if isinstance(weather_dict, dict) else None,
             "sources_used": weather_dict.get("sources_used") if isinstance(weather_dict, dict) else [],
