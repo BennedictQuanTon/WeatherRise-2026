@@ -36,9 +36,30 @@ class LLMParser:
                 max_tokens=1024,
             )
             content = response.choices[0].message.content.strip()
-            json_match = re.search(r"\{.*\}", content, re.DOTALL)
-            if json_match:
-                content = json_match.group()
+            
+            # Robust JSON extraction to handle thinking traces & multiple JSON blocks
+            extracted = None
+            indices = [i for i, char in enumerate(content) if char == '{']
+            for idx in reversed(indices):
+                sub = content[idx:].strip()
+                last_brace = sub.rfind('}')
+                if last_brace != -1:
+                    candidate = sub[:last_brace+1]
+                    try:
+                        parsed_candidate = json.loads(candidate)
+                        if isinstance(parsed_candidate, dict) and "domain" in parsed_candidate:
+                            extracted = candidate
+                            break
+                    except json.JSONDecodeError:
+                        continue
+            
+            if extracted:
+                content = extracted
+            else:
+                json_match = re.search(r"\{.*\}", content, re.DOTALL)
+                if json_match:
+                    content = json_match.group()
+                    
             data = json.loads(content)
             return self._build_output(data, raw_input)
         except Exception as e:

@@ -124,6 +124,11 @@ def predict_tourism(
             f"Maximum temperature: {max_temp}°C",
             f"Maximum wind speed: {max_wind} km/h",
         ],
+        weather_stats={
+            "max_rain_prob": max_rain,
+            "max_temp": max_temp,
+            "max_wind_speed": max_wind,
+        },
     )
 
 
@@ -164,6 +169,11 @@ def predict_construction(
             f"Maximum temperature: {max_temp}°C",
             f"Maximum wind speed: {max_wind} km/h",
         ],
+        weather_stats={
+            "max_rain_prob": max_rain,
+            "max_temp": max_temp,
+            "max_wind_speed": max_wind,
+        },
     )
 
 
@@ -209,6 +219,11 @@ def predict_agriculture(
             f"Maximum temperature: {max_temp}°C",
             f"Maximum humidity: {max_humidity}%",
         ],
+        weather_stats={
+            "max_rain_prob": max_rain,
+            "max_temp": max_temp,
+            "max_humidity": max_humidity,
+        },
     )
 
 

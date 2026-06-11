@@ -1,7 +1,8 @@
 """
 MCP Route: place.searchRestaurants
-Searches restaurants from PostgreSQL (Foody data) using PostGIS proximity.
-Falls back to local seed JSON if DB unavailable.
+Phase 2: Searches restaurants from PostgreSQL (Foody) with PostGIS proximity.
+Falls back to danang_restaurants.json mock (with near_place_id links).
+Returns V3 MCPResponseEnvelope.
 """
 import os
 import json
@@ -9,6 +10,7 @@ from pathlib import Path
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
+from mcp.routes.envelope import make_envelope
 
 router = APIRouter()
 
@@ -21,6 +23,7 @@ class RestaurantSearchRequest(BaseModel):
     lat: Optional[float] = None
     lon: Optional[float] = None
     radius_km: float = 5.0
+    near_place_id: Optional[str] = None   # Filter by attraction proximity
     category: Optional[str] = None
     vibe_tags: Optional[List[str]] = None
     price_tier: Optional[str] = None
@@ -64,9 +67,8 @@ async def _query_postgres(req: RestaurantSearchRequest) -> List[Dict]:
         rows = await conn.fetch(query, lon, lat, radius_m, req.limit)
         await conn.close()
 
-        results = []
-        for r in rows:
-            results.append({
+        return [
+            {
                 "place_id": r["id"],
                 "name_vi": r["name_vi"],
                 "name_en": r["name_en"],
@@ -81,27 +83,45 @@ async def _query_postgres(req: RestaurantSearchRequest) -> List[Dict]:
                 "vibe_tags": list(r["vibe_tags"] or []),
                 "is_indoor": r["is_indoor"],
                 "photo_url": r["photo_url"],
-                "foody_url": r["foody_url"],
                 "avg_duration_minutes": r["avg_duration_minutes"],
                 "distance_m": round(float(r["dist_m"]), 0),
-            })
-        return results
+                "source": "postgres_foody",
+            }
+            for r in rows
+        ]
     except Exception as e:
         print(f"[MCP/searchRestaurants] PostgreSQL query failed: {e}")
         return []
 
 
 @router.post("/searchRestaurants")
-async def search_restaurants(req: RestaurantSearchRequest):
-    """Search restaurants from Foody DB with PostGIS proximity. Falls back to mock."""
+async def search_restaurants(req: RestaurantSearchRequest) -> Dict[str, Any]:
+    """Search restaurants from Foody DB or mock. Returns V3 envelope."""
     results = await _query_postgres(req)
+    provider = "postgres_foody"
 
-    if results:
-        return {"results": results, "source": "postgres_foody", "count": len(results)}
+    if not results:
+        mock = _load_mock()
+        # Optionally filter by near_place_id
+        if req.near_place_id:
+            nearby = [r for r in mock if r.get("near_place_id") == req.near_place_id]
+            results = nearby or mock
+        else:
+            results = mock
+        results = results[: req.limit]
+        provider = "mock_fallback"
 
-    # Fallback to mock data
-    mock = _load_mock()
-    if mock:
-        return {"results": mock[:req.limit], "source": "mock_fallback", "count": len(mock[:req.limit])}
+    warnings = []
+    if provider == "mock_fallback":
+        warnings.append("PostgreSQL unavailable — returning mock restaurant data.")
 
-    return {"results": [], "source": "none", "count": 0}
+    return make_envelope(
+        route="place.searchRestaurants",
+        context_type="restaurants",
+        output={"restaurants": results, "count": len(results)},
+        provider=provider,
+        source_type="dynamic" if provider == "postgres_foody" else "static",
+        freshness="live" if provider == "postgres_foody" else "seeded",
+        input_data={"location": req.location, "lat": req.lat, "lon": req.lon, "limit": req.limit},
+        warnings=warnings,
+    )

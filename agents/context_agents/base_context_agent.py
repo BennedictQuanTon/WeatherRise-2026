@@ -24,11 +24,18 @@ class BaseContextAgent:
         return ["rain_probability", "temperature", "wind_speed", "humidity"]
 
     async def call_mcp(self, route: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Call a MCP route and return the result."""
+        """Call a MCP route and return the result.
+
+        Converts dot-notation (e.g. 'location.resolveCoordinates') to
+        REST path notation ('/tools/location/resolveCoordinates') to match
+        MCP server router mount points.
+        """
         try:
+            # Phase 1 Bug Fix: dot → slash for REST path
+            url_path = route.replace(".", "/")
             async with httpx.AsyncClient(timeout=15.0) as client:
                 r = await client.post(
-                    f"{MCP_SERVER_URL}/tools/{route}",
+                    f"{MCP_SERVER_URL}/tools/{url_path}",
                     json=payload,
                 )
                 r.raise_for_status()

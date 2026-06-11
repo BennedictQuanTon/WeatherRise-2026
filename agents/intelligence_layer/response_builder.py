@@ -52,6 +52,8 @@ class ResponseBuilder:
             "risk_source": "prediction_engine",
             "llm_source": "nvidia_nim" if not nim_response.error else "fallback",
             "llm_json_valid": bool(llm_json),
+            "evidence": prediction_result.evidence,
+            "weather_stats": prediction_result.weather_stats,
         }
 
         if nim_response.error:
