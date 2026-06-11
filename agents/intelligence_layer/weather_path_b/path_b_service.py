@@ -64,6 +64,9 @@ class PathBWeatherService:
         earth2_report = self.earth2_layer.process(requirement, normalized_records)
 
         valid_records, quality_reports = self.quality_validator.validate(normalized_records, requirement)
+        print("DEBUG PATH B: Normalized records length =", len(normalized_records), flush=True)
+        for rep in quality_reports:
+            print(f"DEBUG PATH B REPORT: {rep.source_code} valid={rep.valid} score={rep.quality_score} missing={rep.missing_fields} invalid={rep.invalid_fields} warnings={rep.warnings}", flush=True)
         if not valid_records:
             return self.gold_builder.unavailable(
                 requirement,

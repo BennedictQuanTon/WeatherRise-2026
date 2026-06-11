@@ -6,8 +6,11 @@ Loads incomplete local KB tracking parameters to explicitly force live MCP calls
 """
 import json
 import os
+import time
 from datetime import datetime, timedelta
 from typing import List
+
+from apps.api.app.routes.monitor import emit
 from agents.context_agents.base_context_agent import BaseContextAgent
 from apps.api.app.schemas.context_schema import (
     ParserOutput, MCPContext, FullyProcessedPayload,
@@ -79,9 +82,9 @@ class ConstructionContextAgent(BaseContextAgent):
         return list(dict.fromkeys(ctx))
 
     def get_weather_variables(self, intent: str) -> List[str]:
-        base = ["rain_probability", "temperature", "wind_speed", "humidity"]
+        base = ["rain_probability", "temperature_c", "wind_speed_kmh", "humidity_percent"]
         if "crane" in intent.lower():
-            base += ["wind_gusts", "storm_warning"]
+            base += ["wind_gust_kmh", "storm_warning"]
         return base
 
     async def process(self, parsed: ParserOutput) -> FullyProcessedPayload:
@@ -91,6 +94,7 @@ class ConstructionContextAgent(BaseContextAgent):
         knowledge_context = KnowledgeContext()
 
         # 1. Enforce default coordinates fallback
+        t_phase1 = time.time()
         if parsed.location:
             coord_result = await self.call_mcp("location.resolveCoordinates", {
                 "location": parsed.location
@@ -122,7 +126,11 @@ class ConstructionContextAgent(BaseContextAgent):
             parsed.time_range.start = parsed.time_range.start or now.strftime("%Y-%m-%d")
             parsed.time_range.end = parsed.time_range.end or (now + timedelta(days=1)).strftime("%Y-%m-%d")
 
+        ms_phase1 = int((time.time() - t_phase1) * 1000)
+        emit("step", "ConstructionAgent", "Phase I: Coordinates & Time resolved", duration_ms=ms_phase1)
+
         # 3. Interrogate Fragmented Knowledge Base (Forced Cache-Miss)
+        t_phase2 = time.time()
         target_site = parsed.location or "DN_SITE_ZONE_3"
         kb_record = {}
 
@@ -146,7 +154,11 @@ class ConstructionContextAgent(BaseContextAgent):
             knowledge_context.missing_context = ["thresholds", "safety_margins"]
             print(f"[KB Miss] No record matched for location='{target_site}'. MCP recovery required.")
 
+        ms_phase2 = int((time.time() - t_phase2) * 1000)
+        emit("step", "ConstructionAgent", "Phase II: KB Cache Search", duration_ms=ms_phase2)
+
         # 4. Trigger Live MCP Recovery Fallback
+        t_mcp = time.time()
         risk_data = await self.call_mcp("construction.getLiveTelemetry", {
             "location": target_site,
             "intent": parsed.intent,
@@ -160,7 +172,11 @@ class ConstructionContextAgent(BaseContextAgent):
             if "live_telemetry_reference" in risk_data:
                 knowledge_context.found_context["live_telemetry_reference"] = risk_data["live_telemetry_reference"]
 
+        ms_mcp = int((time.time() - t_mcp) * 1000)
+        emit("step", "ConstructionAgent", "Phase III: Live Telemetry MCP", duration_ms=ms_mcp)
+
         # 5. Extract Weather Forecast Telemetry
+        t_weather = time.time()
         forecast = await self.call_mcp("weather.getForecast", {
             "latitude": mcp_ctx.coordinates["latitude"],
             "longitude": mcp_ctx.coordinates["longitude"],
@@ -169,6 +185,9 @@ class ConstructionContextAgent(BaseContextAgent):
         })
         if forecast:
             mcp_ctx.weather_forecast = forecast
+
+        ms_weather = int((time.time() - t_weather) * 1000)
+        emit("step", "ConstructionAgent", "Phase IV: Weather Forecast MCP", duration_ms=ms_weather)
 
         # 6. Evaluate Operational Context Completeness markers
         has_recovered = "mcp_recovered_thresholds" in knowledge_context.found_context

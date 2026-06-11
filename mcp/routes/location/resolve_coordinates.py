@@ -50,18 +50,18 @@ async def resolve_coordinates(req: LocationRequest) -> Dict[str, Any]:
         )
 
     # Fast path: known cities
-    if key in _KNOWN_COORDS:
-        result = _KNOWN_COORDS[key]
-        CACHE[cache_key] = result
-        return make_envelope(
-            route="location.resolveCoordinates",
-            context_type="coordinates",
-            output={**result, "confidence": "high", "cached": False},
-            provider="known_coords",
-            source_type="static",
-            freshness="seeded",
-            input_data={"location": req.location},
-        )
+    for known_key, result in _KNOWN_COORDS.items():
+        if known_key in key:
+            CACHE[cache_key] = result
+            return make_envelope(
+                route="location.resolveCoordinates",
+                context_type="coordinates",
+                output={**result, "confidence": "high", "cached": False},
+                provider="known_coords",
+                source_type="static",
+                freshness="seeded",
+                input_data={"location": req.location},
+            )
 
     # Nominatim live lookup
     try:
