@@ -14,11 +14,13 @@ from agents.orchestrator.orchestrator import Orchestrator
 from agents.intelligence_layer.intelligence_service import IntelligenceService
 from apps.api.app.routes.monitor import emit
 from apps.api.app.schemas.response_schema import TripPlan, TripDay, TripStop
+from apps.api.app.services.response_view_composer import ResponseViewComposer
 from typing import AsyncIterator, Dict, Any, Optional
 
 _parser = LLMParser()
 _orchestrator = Orchestrator()
 _intelligence = IntelligenceService()
+_view_composer = ResponseViewComposer()
 
 
 def _extract_trip_plan(processed) -> Optional[TripPlan]:
@@ -79,6 +81,61 @@ def _extract_trip_plan(processed) -> Optional[TripPlan]:
         return None
 
 
+def _extract_coordinates(processed) -> Optional[dict[str, float]]:
+    coordinates = None
+    if hasattr(processed, "geographical_location") and processed.geographical_location:
+        coords = processed.geographical_location.coordinates
+        if isinstance(coords, dict):
+            coordinates = coords
+        elif hasattr(coords, "model_dump"):
+            coordinates = coords.model_dump()
+    if not coordinates and hasattr(processed, "mcp_context") and processed.mcp_context:
+        c_dict = processed.mcp_context if isinstance(processed.mcp_context, dict) else processed.mcp_context.model_dump()
+        coordinates = c_dict.get("coordinates")
+    return coordinates
+
+
+def _extract_time_range(processed) -> Optional[dict[str, str]]:
+    if not hasattr(processed, "time_range") or not processed.time_range:
+        return None
+    tr = processed.time_range
+    if isinstance(tr, dict):
+        return {
+            "start": tr.get("start"),
+            "end": tr.get("end"),
+            "raw_text": tr.get("raw_text"),
+        }
+    return {
+        "start": getattr(tr, "start", None),
+        "end": getattr(tr, "end", None),
+        "raw_text": getattr(tr, "raw_text", None),
+    }
+
+
+def _metadata(result, key: str):
+    return result.metadata.get(key) if result.metadata else None
+
+
+def _compose_views(
+    processed,
+    parsed,
+    result,
+    trip_plan: Optional[TripPlan],
+    coordinates: Optional[dict[str, float]],
+    time_range: Optional[dict[str, str]],
+):
+    return _view_composer.compose(
+        processed=processed,
+        intent_subtype=parsed.intent_subtype,
+        intelligence_output=result,
+        trip_plan=trip_plan.model_dump() if trip_plan else None,
+        coordinates=coordinates,
+        time_range=time_range,
+        weather_stats=_metadata(result, "weather_stats"),
+        weather_debug=_metadata(result, "weather_debug"),
+    )
+
+
 async def run_pipeline(raw_input: str, session_id: str) -> Dict[str, Any]:
     pipeline_start = time.time()
     emit("info", "Pipeline", f"▶ [{session_id[:6]}] Start: {raw_input[:60]}")
@@ -99,6 +156,7 @@ async def run_pipeline(raw_input: str, session_id: str) -> Dict[str, Any]:
             "domain": "unknown",
             "location": parsed.location,
             "intent_subtype": parsed.intent_subtype,
+            "response_type": "general",
             "prediction": "N/A",
             "recommendation": "I am a weather-risk intelligence assistant. I can help you with travel planning, construction safety, and agricultural weather impacts. Please ask a related query.",
             "risk_assessment": {"overall": "Low risk"},
@@ -116,6 +174,9 @@ async def run_pipeline(raw_input: str, session_id: str) -> Dict[str, Any]:
             "sources_used": None,
             "sources_rejected": None,
             "weather_debug": None,
+            "response_language": "en",
+            "weather_view": None,
+            "trip_view": None,
         }
 
     # Step 2: Orchestrate + context
@@ -142,38 +203,24 @@ async def run_pipeline(raw_input: str, session_id: str) -> Dict[str, Any]:
     emit("success", "Pipeline",
          f"✅ Complete in {total_ms}ms | domain={processed.domain} | trip={trip_plan is not None}", total_ms)
 
-    coordinates = None
-    if hasattr(processed, "geographical_location") and processed.geographical_location:
-        coords = processed.geographical_location.coordinates
-        if isinstance(coords, dict):
-            coordinates = coords
-        elif hasattr(coords, "model_dump"):
-            coordinates = coords.model_dump()
-    if not coordinates and hasattr(processed, "mcp_context") and processed.mcp_context:
-        c_dict = processed.mcp_context if isinstance(processed.mcp_context, dict) else processed.mcp_context.model_dump()
-        coordinates = c_dict.get("coordinates")
-
-    evidence = result.metadata.get("evidence") if result.metadata else None
-    weather_stats = result.metadata.get("weather_stats") if result.metadata else None
-    weather_path = result.metadata.get("weather_path") if result.metadata else None
-    weather_confidence = result.metadata.get("weather_confidence") if result.metadata else None
-    weather_mode = result.metadata.get("weather_mode") if result.metadata else None
-    sources_used = result.metadata.get("sources_used") if result.metadata else None
-    sources_rejected = result.metadata.get("sources_rejected") if result.metadata else None
-    weather_debug = result.metadata.get("weather_debug") if result.metadata else None
-
-    time_range = None
-    if hasattr(processed, "time_range") and processed.time_range:
-        tr = processed.time_range
-        time_range = {
-            "start": tr.start if hasattr(tr, "start") else getattr(tr, "get")("start"),
-            "end": tr.end if hasattr(tr, "end") else getattr(tr, "get")("end"),
-        }
+    coordinates = _extract_coordinates(processed)
+    evidence = _metadata(result, "evidence")
+    weather_stats = _metadata(result, "weather_stats")
+    weather_path = _metadata(result, "weather_path")
+    weather_confidence = _metadata(result, "weather_confidence")
+    weather_mode = _metadata(result, "weather_mode")
+    sources_used = _metadata(result, "sources_used")
+    sources_rejected = _metadata(result, "sources_rejected")
+    weather_debug = _metadata(result, "weather_debug")
+    response_language = _metadata(result, "response_language")
+    time_range = _extract_time_range(processed)
+    view_payload = _compose_views(processed, parsed, result, trip_plan, coordinates, time_range)
 
     return {
         "domain": processed.domain,
         "location": processed.location,
         "intent_subtype": parsed.intent_subtype,
+        "response_type": view_payload["response_type"],
         "prediction": result.prediction,
         "recommendation": result.recommendation,
         "risk_assessment": {k: v.value if hasattr(v, "value") else v for k, v in result.risk_assessment.items()},
@@ -191,6 +238,9 @@ async def run_pipeline(raw_input: str, session_id: str) -> Dict[str, Any]:
         "sources_used": sources_used,
         "sources_rejected": sources_rejected,
         "weather_debug": weather_debug,
+        "response_language": response_language,
+        "weather_view": view_payload["weather_view"],
+        "trip_view": view_payload["trip_view"],
     }
 
 
@@ -222,6 +272,7 @@ async def run_pipeline_streaming(
                 "domain": "unknown",
                 "location": parsed.location,
                 "intent_subtype": parsed.intent_subtype,
+                "response_type": "general",
                 "prediction": "N/A",
                 "recommendation": "I am a weather-risk intelligence assistant. I can help you with travel planning, construction safety, and agricultural weather impacts. Please ask a related query.",
                 "risk_assessment": {"overall": "Low risk"},
@@ -239,6 +290,9 @@ async def run_pipeline_streaming(
                 "sources_used": None,
                 "sources_rejected": None,
                 "weather_debug": None,
+                "response_language": "en",
+                "weather_view": None,
+                "trip_view": None,
             }
         }
         return
@@ -263,33 +317,18 @@ async def run_pipeline_streaming(
     total_ms = round((time.time() - pipeline_start) * 1000)
     emit("success", "Pipeline", f"✅ WS complete in {total_ms}ms", total_ms)
 
-    coordinates = None
-    if hasattr(processed, "geographical_location") and processed.geographical_location:
-        coords = processed.geographical_location.coordinates
-        if isinstance(coords, dict):
-            coordinates = coords
-        elif hasattr(coords, "model_dump"):
-            coordinates = coords.model_dump()
-    if not coordinates and hasattr(processed, "mcp_context") and processed.mcp_context:
-        c_dict = processed.mcp_context if isinstance(processed.mcp_context, dict) else processed.mcp_context.model_dump()
-        coordinates = c_dict.get("coordinates")
-
-    evidence = result.metadata.get("evidence") if result.metadata else None
-    weather_stats = result.metadata.get("weather_stats") if result.metadata else None
-    weather_path = result.metadata.get("weather_path") if result.metadata else None
-    weather_confidence = result.metadata.get("weather_confidence") if result.metadata else None
-    weather_mode = result.metadata.get("weather_mode") if result.metadata else None
-    sources_used = result.metadata.get("sources_used") if result.metadata else None
-    sources_rejected = result.metadata.get("sources_rejected") if result.metadata else None
-    weather_debug = result.metadata.get("weather_debug") if result.metadata else None
-
-    time_range = None
-    if hasattr(processed, "time_range") and processed.time_range:
-        tr = processed.time_range
-        time_range = {
-            "start": tr.start if hasattr(tr, "start") else getattr(tr, "get")("start"),
-            "end": tr.end if hasattr(tr, "end") else getattr(tr, "get")("end"),
-        }
+    coordinates = _extract_coordinates(processed)
+    evidence = _metadata(result, "evidence")
+    weather_stats = _metadata(result, "weather_stats")
+    weather_path = _metadata(result, "weather_path")
+    weather_confidence = _metadata(result, "weather_confidence")
+    weather_mode = _metadata(result, "weather_mode")
+    sources_used = _metadata(result, "sources_used")
+    sources_rejected = _metadata(result, "sources_rejected")
+    weather_debug = _metadata(result, "weather_debug")
+    response_language = _metadata(result, "response_language")
+    time_range = _extract_time_range(processed)
+    view_payload = _compose_views(processed, parsed, result, trip_plan, coordinates, time_range)
 
     yield {
         "type": "result",
@@ -297,6 +336,7 @@ async def run_pipeline_streaming(
             "domain": processed.domain,
             "location": processed.location,
             "intent_subtype": parsed.intent_subtype,
+            "response_type": view_payload["response_type"],
             "prediction": result.prediction,
             "recommendation": result.recommendation,
             "risk_assessment": {k: v.value if hasattr(v, "value") else v for k, v in result.risk_assessment.items()},
@@ -314,5 +354,8 @@ async def run_pipeline_streaming(
             "sources_used": sources_used,
             "sources_rejected": sources_rejected,
             "weather_debug": weather_debug,
+            "response_language": response_language,
+            "weather_view": view_payload["weather_view"],
+            "trip_view": view_payload["trip_view"],
         }
     }

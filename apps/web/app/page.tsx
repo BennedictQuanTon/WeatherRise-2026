@@ -25,11 +25,13 @@ const TripMapPanel = dynamic(
 
 // ─── Types ─────────────────────────────────────────────────
 interface RiskAssessment {
-  rain_risk: string;
-  wind_risk: string;
-  heat_risk: string;
-  overall_risk: string;
+  rain_risk?: string;
+  wind_risk?: string;
+  heat_risk?: string;
+  overall_risk?: string;
   trip_disruption_risk?: string;
+  construction_safety_risk?: string;
+  disease_risk?: string;
 }
 
 interface TripStop {
@@ -68,7 +70,133 @@ interface TripPlan {
   planning_mode: string;
 }
 
+type ResponseType = "weather_prediction" | "trip_planning" | "general";
+
+interface LocationPoint {
+  name: string;
+  latitude: number;
+  longitude: number;
+}
+
+interface DateRange {
+  start?: string;
+  end?: string;
+  label?: string;
+}
+
+interface MapMarker {
+  id: string;
+  label: string;
+  latitude: number;
+  longitude: number;
+  title?: string;
+  description?: string;
+  order?: number;
+  category?: string;
+  temperature_c?: number;
+  weather_condition?: string;
+  rain_probability?: number;
+  is_indoor?: boolean;
+}
+
+interface WeatherPredictionView {
+  title: string;
+  location: LocationPoint;
+  date_range: DateRange;
+  assumption: {
+    summary: string;
+    should_go: boolean;
+    decision_label: string;
+    reason: string;
+  };
+  statistics: {
+    avg_temperature_c?: number;
+    min_temperature_c?: number;
+    max_temperature_c?: number;
+    avg_wind_kmh?: number;
+    total_rainfall_mm?: number;
+    rain_risk?: string;
+    wind_risk?: string;
+    heat_risk?: string;
+    overall_risk?: string;
+    most_common_condition?: string;
+  };
+  daily_forecast: Array<{
+    date: string;
+    day_label: string;
+    condition: string;
+    condition_icon: string;
+    max_temp_c?: number;
+    min_temp_c?: number;
+    wind_kmh?: number;
+    rain_probability?: number;
+    rain_mm?: number;
+    risk?: string;
+  }>;
+  recommendations: string[];
+  alternatives: Array<{
+    name: string;
+    description: string;
+    distance_label?: string;
+    latitude?: number;
+    longitude?: number;
+  }>;
+  map: {
+    center: LocationPoint;
+    markers: MapMarker[];
+  };
+  insights: Array<{
+    title: string;
+    body: string;
+    type: "rain" | "wind" | "heat" | "travel" | "general";
+  }>;
+}
+
+interface TripPlanningView {
+  title: string;
+  date_range: DateRange;
+  summary_cards: {
+    avg_high_c?: number;
+    avg_low_c?: number;
+    avg_wind_kmh?: number;
+    humidity_percent?: number;
+    rain_risk?: string;
+  };
+  ai_summary: string;
+  days: Array<{
+    day: number;
+    date?: string;
+    title: string;
+    summary: string;
+    weather: {
+      high_c?: number;
+      low_c?: number;
+      rain_probability?: number;
+      condition?: string;
+    };
+    stops: Array<{
+      order: number;
+      time: string;
+      time_block: string;
+      category: string;
+      name: string;
+      description?: string;
+      latitude: number;
+      longitude: number;
+      forecast_temp_c?: number;
+      rain_probability?: number;
+      weather_condition?: string;
+      is_indoor: boolean;
+      weather_suitability?: string;
+    }>;
+  }>;
+  map: {
+    markers: MapMarker[];
+  };
+}
+
 interface ChatResult {
+  response_type?: ResponseType;
   domain?: string;
   location?: string;
   prediction?: string;
@@ -89,6 +217,9 @@ interface ChatResult {
   sources_used?: string[];
   sources_rejected?: string[];
   weather_debug?: WeatherDebug;
+  response_language?: "en" | "vi";
+  weather_view?: WeatherPredictionView | null;
+  trip_view?: TripPlanningView | null;
 }
 
 interface WeatherDebug {
@@ -369,6 +500,250 @@ function formatConfidence(value?: number) {
   return `${Math.round(value * 100)}%`;
 }
 
+function formatTemp(value?: number) {
+  return value === undefined || value === null ? "n/a" : `${Math.round(value)}°C`;
+}
+
+function formatPercent(value?: number) {
+  return value === undefined || value === null ? "n/a" : `${Math.round(value * 100)}%`;
+}
+
+function formatNumber(value?: number, suffix = "") {
+  return value === undefined || value === null ? "n/a" : `${Math.round(value)}${suffix}`;
+}
+
+function blockLabel(value: string) {
+  return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function WeatherMetricCard({ label, value, sub, Icon }: { label: string; value: string; sub?: string; Icon: any }) {
+  return (
+    <div className="rounded-xl border border-cyan-400/10 bg-white/[0.04] p-3 min-h-[88px] flex items-center justify-between gap-3">
+      <div>
+        <div className="text-[10px] text-slate-400">{label}</div>
+        <div className="text-xl font-black text-white mt-1">{value}</div>
+        {sub && <div className="text-[10px] text-slate-500 mt-1">{sub}</div>}
+      </div>
+      <Icon size={20} className="text-cyan-300 shrink-0" />
+    </div>
+  );
+}
+
+function WeatherPredictionDemoView({ result }: { result: ChatResult }) {
+  const view = result.weather_view;
+  if (!view) return null;
+  const stats = view.statistics;
+  const decisionColor = view.assumption.should_go ? "#69f0ae" : "#ff5252";
+
+  return (
+    <div className="space-y-5 text-slate-100">
+      <div className="space-y-2">
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-bold text-cyan-200">
+          <MapPin size={11} /> {view.location.name}
+        </div>
+        <h2 className="text-2xl md:text-3xl font-black leading-tight">{view.title}</h2>
+        {view.date_range.label && <p className="text-xs text-slate-400">{view.date_range.label}</p>}
+      </div>
+
+      <div className="rounded-xl border border-cyan-400/10 bg-cyan-950/20 p-4 grid grid-cols-1 md:grid-cols-[1fr_180px] gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-sm font-bold">
+            <MapPin size={14} className="text-cyan-300" />
+            Assumption
+          </div>
+          <p className="text-xs text-slate-300 leading-relaxed mt-3">{view.assumption.summary}</p>
+        </div>
+        <div className="rounded-xl border border-white/5 bg-slate-950/40 p-4 flex items-center justify-between">
+          <div>
+            <div className="text-[10px] text-slate-400">Should you proceed?</div>
+            <div className="text-xl font-black mt-1" style={{ color: decisionColor }}>{view.assumption.decision_label}</div>
+            <div className="text-[10px] text-slate-400 mt-1">{view.assumption.reason}</div>
+          </div>
+          <CheckCircle2 size={22} style={{ color: decisionColor }} />
+        </div>
+      </div>
+
+      <div>
+        <div className="flex items-center gap-2 text-sm font-bold text-cyan-300 mb-3">
+          <Calendar size={14} /> Weather Overview
+        </div>
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+          <WeatherMetricCard label="Avg Temperature" value={formatTemp(stats.avg_temperature_c)} sub={`Min ${formatTemp(stats.min_temperature_c)} · Max ${formatTemp(stats.max_temperature_c)}`} Icon={Thermometer} />
+          <WeatherMetricCard label="Avg Wind" value={formatNumber(stats.avg_wind_kmh, " km/h")} sub={stats.wind_risk ? `${stats.wind_risk} wind risk` : undefined} Icon={Wind} />
+          <WeatherMetricCard label="Total Rainfall" value={formatNumber(stats.total_rainfall_mm, " mm")} sub={stats.rain_risk ? `${stats.rain_risk} rain risk` : undefined} Icon={Droplets} />
+          <WeatherMetricCard label="Condition" value={stats.most_common_condition || "n/a"} sub={stats.overall_risk ? `${stats.overall_risk} overall risk` : undefined} Icon={Sun} />
+        </div>
+      </div>
+
+      {view.daily_forecast.length > 0 && (
+        <div className="rounded-xl border border-cyan-400/10 bg-white/[0.03] p-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2">
+            {view.daily_forecast.slice(0, 7).map((day) => (
+              <div key={day.date} className="rounded-lg border border-white/5 bg-slate-950/30 p-3 text-center min-h-[132px]">
+                <div className="text-xs font-bold text-white">{day.day_label.split(" ")[0]}</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">{day.date.slice(5)}</div>
+                <Sun size={18} className="mx-auto mt-3 text-amber-300" />
+                <div className="mt-3 text-lg font-black">{formatTemp(day.max_temp_c)}</div>
+                <div className="text-[10px] text-slate-400">{formatTemp(day.min_temp_c)}</div>
+                <div className="mt-2 flex items-center justify-center gap-3 text-[10px] text-slate-400">
+                  <span>{formatNumber(day.wind_kmh, " km/h")}</span>
+                  <span>{formatPercent(day.rain_probability)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div className="rounded-xl border border-emerald-400/15 bg-emerald-500/5 p-4">
+          <div className="text-sm font-bold text-emerald-300 mb-3">Recommendation</div>
+          <div className="space-y-2">
+            {view.recommendations.map((item, idx) => (
+              <div key={idx} className="flex gap-2 text-xs text-slate-200 leading-relaxed">
+                <CheckCircle2 size={13} className="text-emerald-300 shrink-0 mt-0.5" />
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-cyan-400/10 bg-cyan-500/5 p-4">
+          <div className="text-sm font-bold text-cyan-300 mb-3">What This Means For You</div>
+          <div className="space-y-2">
+            {view.insights.map((item, idx) => (
+              <div key={idx} className="rounded-lg bg-slate-950/30 px-3 py-2">
+                <div className="text-xs font-bold text-cyan-200">{item.title}</div>
+                <div className="text-[11px] text-slate-400 leading-relaxed mt-1">{item.body}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {view.alternatives.length > 0 && (
+        <div className="rounded-xl border border-purple-400/15 bg-purple-500/5 p-4">
+          <div className="text-sm font-bold text-purple-200 mb-3">Alternative Options If Weather Turns Poor</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {view.alternatives.map((alt, idx) => (
+              <div key={`${alt.name}-${idx}`} className="rounded-lg border border-white/5 bg-slate-950/25 p-3">
+                <div className="text-xs font-bold text-white">{alt.name}</div>
+                {alt.distance_label && <div className="text-[10px] text-slate-500 mt-1">{alt.distance_label}</div>}
+                <div className="text-[11px] text-slate-400 mt-2 leading-relaxed">{alt.description}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <PathBDebugPanel result={result} />
+    </div>
+  );
+}
+
+function TripPlanningDemoView({ result, activeDay, setActiveDay }: { result: ChatResult; activeDay: number; setActiveDay: (day: number) => void }) {
+  const view = result.trip_view;
+  if (!view) return null;
+  const currentDay = view.days.find((day) => day.day === activeDay) || view.days[0];
+  const cards = view.summary_cards;
+
+  return (
+    <div className="rounded-xl bg-slate-50 text-slate-950 p-4 md:p-5 space-y-4">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-2xl md:text-3xl font-black tracking-tight">{view.title}</h2>
+          {view.date_range.label && <div className="text-xs text-blue-600 font-bold mt-1">{view.date_range.label}</div>}
+        </div>
+        <div className="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black text-emerald-700">LIVE</div>
+      </div>
+
+      <div className="grid grid-cols-2 xl:grid-cols-5 gap-3">
+        <TripSummaryCard label="Avg High" value={formatTemp(cards.avg_high_c)} Icon={Sun} />
+        <TripSummaryCard label="Avg Low" value={formatTemp(cards.avg_low_c)} Icon={Moon} />
+        <TripSummaryCard label="Avg Wind" value={formatNumber(cards.avg_wind_kmh, " km/h")} Icon={Wind} />
+        <TripSummaryCard label="Humidity" value={formatNumber(cards.humidity_percent, "%")} Icon={Droplets} />
+        <TripSummaryCard label="Rain Risk" value={cards.rain_risk || "n/a"} Icon={ShieldCheck} />
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <div className="text-xs font-black text-blue-600 mb-2">AI Summary</div>
+        <p className="text-sm leading-relaxed text-slate-700">{view.ai_summary}</p>
+      </div>
+
+      {view.days.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {view.days.map((day) => (
+            <button
+              key={day.day}
+              onClick={() => setActiveDay(day.day)}
+              className={`min-w-[130px] rounded-lg border px-3 py-2 text-left transition-all ${
+                currentDay?.day === day.day
+                  ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200"
+                  : "bg-white text-slate-700 border-slate-200 hover:border-blue-300"
+              }`}
+            >
+              <div className="text-xs font-black">Day {day.day}</div>
+              <div className="text-[10px] opacity-75">{day.date || day.title}</div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {currentDay && (
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <div className="flex items-start justify-between gap-3 flex-wrap border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="text-lg font-black">{currentDay.title}</h3>
+              <p className="text-xs text-slate-600 leading-relaxed mt-1">{currentDay.summary}</p>
+            </div>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="font-bold">{formatTemp(currentDay.weather.high_c)} / {formatTemp(currentDay.weather.low_c)}</span>
+              <span className="text-blue-600 font-bold">{formatPercent(currentDay.weather.rain_probability)}</span>
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-2">
+            {currentDay.stops.map((stop) => (
+              <div key={`${stop.order}-${stop.name}`} className="grid grid-cols-[56px_1fr_auto] gap-3 items-center rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+                <div className="text-xs font-black text-slate-700 font-mono">{stop.time}</div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black text-blue-600 uppercase tracking-wide">{blockLabel(stop.time_block)}</span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${stop.is_indoor ? "bg-indigo-50 text-indigo-700" : "bg-cyan-50 text-cyan-700"}`}>
+                      {stop.is_indoor ? "Indoor" : "Outdoor"}
+                    </span>
+                  </div>
+                  <div className="text-sm font-black truncate mt-0.5">{stop.name}</div>
+                  {stop.description && <div className="text-[11px] text-slate-500 truncate">{stop.description}</div>}
+                </div>
+                <div className="text-right text-[11px] text-slate-600 min-w-[78px]">
+                  <div className="font-bold text-amber-600">{formatTemp(stop.forecast_temp_c)}</div>
+                  <div>{formatPercent(stop.rain_probability)} rain</div>
+                  <div className="capitalize">{stop.weather_suitability || "medium"}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <PathBDebugPanel result={result} />
+    </div>
+  );
+}
+
+function TripSummaryCard({ label, value, Icon }: { label: string; value: string; Icon: any }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-3 flex items-center gap-3 min-h-[72px]">
+      <Icon size={18} className="text-blue-600 shrink-0" />
+      <div>
+        <div className="text-lg font-black leading-none">{value}</div>
+        <div className="text-[10px] text-slate-500 mt-1">{label}</div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────
 export default function HomePage() {
   const [input, setInput] = useState("");
@@ -480,7 +855,7 @@ export default function HomePage() {
             } else if (ev.type === "result") {
               setLatestResult(ev.data);
               setActiveDay(1);
-              if (ev.data?.trip_plan) setShowMap(true);
+              if (ev.data?.trip_plan || ev.data?.trip_view || ev.data?.weather_view) setShowMap(true);
               ws.close();
               resolve();
             } else if (ev.type === "error") {
@@ -504,7 +879,7 @@ export default function HomePage() {
         const data: ChatResult = await r.json();
         setLatestResult(data);
         setActiveDay(1);
-        if (data?.trip_plan) setShowMap(true);
+        if (data?.trip_plan || data?.trip_view || data?.weather_view) setShowMap(true);
       } catch (err: any) {
         setLatestResult({ error: "Cannot reach API server." });
       }
@@ -689,7 +1064,13 @@ export default function HomePage() {
 
               {/* ── LEFT: Large Output Canvas ─────────────────────── */}
               {(() => {
-                const overallRisk = latestResult?.risk_assessment?.overall_risk?.toLowerCase() ?? "";
+                const displayRisk = latestResult?.weather_view?.statistics?.overall_risk
+                  ?? latestResult?.risk_assessment?.overall_risk
+                  ?? latestResult?.risk_assessment?.trip_disruption_risk
+                  ?? latestResult?.risk_assessment?.construction_safety_risk
+                  ?? latestResult?.risk_assessment?.disease_risk
+                  ?? "unknown";
+                const overallRisk = displayRisk.toLowerCase();
                 const dynamicBorder = overallRisk === "high" 
                   ? "rgba(239, 68, 68, 0.25)" 
                   : overallRisk === "medium" 
@@ -752,13 +1133,19 @@ export default function HomePage() {
                       </div>
                       <span className="font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider"
                         style={{
-                          color: riskColor(latestResult.risk_assessment?.overall_risk ?? "unknown"),
-                          background: riskBg(latestResult.risk_assessment?.overall_risk ?? "unknown"),
+                          color: riskColor(displayRisk),
+                          background: riskBg(displayRisk),
                         }}>
-                        {latestResult.risk_assessment?.overall_risk ?? "UNKNOWN"}
+                        {displayRisk}
                       </span>
                     </div>
 
+                    {latestResult.response_type === "weather_prediction" && latestResult.weather_view ? (
+                      <WeatherPredictionDemoView result={latestResult} />
+                    ) : latestResult.response_type === "trip_planning" && latestResult.trip_view ? (
+                      <TripPlanningDemoView result={latestResult} activeDay={activeDay} setActiveDay={setActiveDay} />
+                    ) : (
+                      <>
                     {/* Heading */}
                     {latestResult.location && (
                       <h3 className="text-xl font-bold leading-snug text-[var(--color-text-primary)]">
@@ -782,19 +1169,19 @@ export default function HomePage() {
                       <div className="flex gap-3">
                         <RiskBadge 
                           label="Rain" 
-                          value={latestResult.risk_assessment.rain_risk} 
+                          value={latestResult.risk_assessment.rain_risk ?? "unknown"} 
                           Icon={Droplets} 
                           detail={latestResult.weather_stats?.max_rain_prob !== undefined ? `${latestResult.weather_stats.max_rain_prob}%` : undefined}
                         />
                         <RiskBadge 
                           label="Wind" 
-                          value={latestResult.risk_assessment.wind_risk} 
+                          value={latestResult.risk_assessment.wind_risk ?? "unknown"} 
                           Icon={Wind} 
                           detail={latestResult.weather_stats?.max_wind_speed !== undefined ? `${latestResult.weather_stats.max_wind_speed} km/h` : undefined}
                         />
                         <RiskBadge 
                           label="Heat" 
-                          value={latestResult.risk_assessment.heat_risk} 
+                          value={latestResult.risk_assessment.heat_risk ?? "unknown"} 
                           Icon={Thermometer} 
                           detail={latestResult.weather_stats?.max_temp !== undefined ? `${latestResult.weather_stats.max_temp}°C` : undefined}
                         />
@@ -933,6 +1320,8 @@ export default function HomePage() {
                         <AlertTriangle size={14} /> {latestResult.error}
                       </div>
                     )}
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -975,7 +1364,11 @@ export default function HomePage() {
                   <div className="flex items-center gap-2 px-4 py-2 border-b border-white/10 bg-slate-900/40 flex-shrink-0">
                     <Map size={11} className="text-cyan-400" />
                     <span className="text-[10px] font-bold text-slate-200">
-                      {latestResult?.trip_plan ? `Trip Map · ${latestResult.trip_plan.location}` : latestResult?.location ? `Location · ${latestResult.location}` : "Map"}
+                      {latestResult?.trip_plan
+                        ? `Trip Map · ${latestResult.trip_plan.location}`
+                        : latestResult?.weather_view
+                          ? `${latestResult.weather_view.location.name} on Map`
+                          : latestResult?.location ? `Location · ${latestResult.location}` : "Map"}
                     </span>
                     {latestResult?.trip_plan && (
                       <span className="ml-auto text-[9px] text-slate-500">
@@ -986,8 +1379,14 @@ export default function HomePage() {
                   <div className="flex-1 min-h-0 w-full relative">
                     <TripMapPanel 
                       tripPlan={latestResult?.trip_plan} 
-                      coordinates={latestResult?.coordinates}
-                      locationName={latestResult?.location}
+                      coordinates={latestResult?.weather_view?.map?.center
+                        ? {
+                            latitude: latestResult.weather_view.map.center.latitude,
+                            longitude: latestResult.weather_view.map.center.longitude,
+                          }
+                        : latestResult?.coordinates}
+                      locationName={latestResult?.weather_view?.location?.name ?? latestResult?.location}
+                      weatherMarker={latestResult?.weather_view?.map?.markers?.[0] ?? null}
                       activeDay={activeDay}
                     />
                   </div>

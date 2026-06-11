@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     meteosource_api_key: str = ""
     stormglass_api_key: str = ""
     accuweather_api_key: str = ""
+    qwen_localizer_enabled: bool = True
+    qwen_localizer_base_url: str = "http://localhost:8003/v1"
+    qwen_localizer_model: str = "weatherise-parser-qwen35-27b"
+    qwen_localizer_timeout_seconds: int = 20
+    qwen_localizer_max_tokens: int = 2048
 
     # Default location
     default_lat: float = 16.0544

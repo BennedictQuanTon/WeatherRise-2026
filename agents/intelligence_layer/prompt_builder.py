@@ -13,7 +13,7 @@ import json
 from typing import Any
 
 from .schemas import CanonicalWeatherData, PredictionResult, FullyProcessedJSON
-from .prompt_templates import get_system_prompt, REQUIRED_OUTPUT_SCHEMA, HARD_RULES
+from .prompt_templates import get_system_prompt, REQUIRED_OUTPUT_SCHEMA, VIEW_TEXT_OUTPUT_SCHEMA, HARD_RULES
 
 
 class NIMPromptBuilder:
@@ -116,6 +116,7 @@ class NIMPromptBuilder:
 
         user_payload = {
             "task": "Generate a final Weatherise response using Path B Gold Weather Decision.",
+            "llm_role": "Write user-facing wording only. Backend code will build all required frontend fields deterministically.",
             "domain": domain,
             "intent": intent,
             "raw_user_input": raw_input,
@@ -131,10 +132,13 @@ class NIMPromptBuilder:
                 else []
             ),
             "prediction_engine_result": pred_dict,
-            "required_output_schema": REQUIRED_OUTPUT_SCHEMA,
+            "required_output_schema": VIEW_TEXT_OUTPUT_SCHEMA,
             "hard_rules": [
                 *HARD_RULES,
                 "Do not invent weather values.",
+                "Do not invent coordinates.",
+                "Do not invent itinerary stops, dates, or map markers.",
+                "Do not decide response_type, weather_view, trip_view, or any required frontend field.",
                 "Do not override deterministic risk_assessment values.",
                 "Mention weather confidence and source disagreement when useful.",
             ],

@@ -53,6 +53,7 @@ class ResponseBuilder:
             "risk_source": "prediction_engine",
             "llm_source": "nvidia_nim" if not nim_response.error else "fallback",
             "llm_json_valid": bool(llm_json),
+            "llm_text_fragments": self._extract_text_fragments(llm_json),
             "evidence": prediction_result.evidence,
             "weather_stats": prediction_result.weather_stats,
         }
@@ -109,3 +110,13 @@ class ResponseBuilder:
                 pass
 
         return {}
+
+    def _extract_text_fragments(self, llm_json: dict[str, Any]) -> dict[str, Any]:
+        """Keep optional display wording while excluding structural frontend data."""
+        allowed = {
+            "assumption_summary",
+            "recommendation_bullets",
+            "insight_bullets",
+            "trip_day_summaries",
+        }
+        return {key: llm_json[key] for key in allowed if key in llm_json}

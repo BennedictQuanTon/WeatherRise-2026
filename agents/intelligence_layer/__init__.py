@@ -18,6 +18,8 @@ from .nim_client import NIMClient
 from .prompt_builder import NIMPromptBuilder
 from .response_builder import ResponseBuilder
 from .weather_normalizer import WeatherNormalizer
+from .language_detection import detect_response_language
+from .vietnamese_localizer import QwenVietnameseLocalizer
 
 __all__ = [
     "IntelligenceService",
@@ -32,4 +34,6 @@ __all__ = [
     "NIMPromptBuilder",
     "ResponseBuilder",
     "WeatherNormalizer",
+    "detect_response_language",
+    "QwenVietnameseLocalizer",
 ]

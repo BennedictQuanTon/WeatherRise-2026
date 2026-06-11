@@ -44,10 +44,22 @@ interface TripPlan {
   planning_mode: string;
 }
 
+interface WeatherMarker {
+  label: string;
+  latitude: number;
+  longitude: number;
+  title?: string;
+  description?: string;
+  temperature_c?: number;
+  weather_condition?: string;
+  rain_probability?: number;
+}
+
 interface Props {
   tripPlan?: TripPlan | null;
   coordinates?: { latitude: number; longitude: number } | null;
   locationName?: string | null;
+  weatherMarker?: WeatherMarker | null;
   activeDay?: number;
   onActiveDayChange?: (day: number) => void;
 }
@@ -106,6 +118,7 @@ export default function TripMapPanel({
   tripPlan, 
   coordinates, 
   locationName,
+  weatherMarker,
   activeDay = 1,
   onActiveDayChange,
 }: Props) {
@@ -120,6 +133,9 @@ export default function TripMapPanel({
   if (hasTripPlan && stops.length) {
     centerLat = stops.reduce((s, p) => s + p.lat, 0) / stops.length;
     centerLon = stops.reduce((s, p) => s + p.lon, 0) / stops.length;
+  } else if (weatherMarker) {
+    centerLat = weatherMarker.latitude;
+    centerLon = weatherMarker.longitude;
   } else if (coordinates && coordinates.latitude && coordinates.longitude) {
     centerLat = coordinates.latitude;
     centerLon = coordinates.longitude;
@@ -148,7 +164,10 @@ export default function TripMapPanel({
           {hasTripPlan && polyline.length > 0 && (
             <FitBoundsComponent coords={polyline} />
           )}
-          {!hasTripPlan && coordinates && coordinates.latitude && coordinates.longitude && (
+          {!hasTripPlan && weatherMarker && (
+            <FitBoundsComponent coords={[[weatherMarker.latitude, weatherMarker.longitude]]} />
+          )}
+          {!hasTripPlan && !weatherMarker && coordinates && coordinates.latitude && coordinates.longitude && (
             <FitBoundsComponent coords={[[coordinates.latitude, coordinates.longitude]]} />
           )}
 
@@ -268,6 +287,52 @@ export default function TripMapPanel({
                 </Marker>
               );
             })
+          ) : weatherMarker ? (
+            <Marker position={[weatherMarker.latitude, weatherMarker.longitude]}>
+              <Tooltip
+                permanent
+                direction="top"
+                offset={[0, -10]}
+                className="leaflet-tooltip-custom"
+              >
+                <div
+                  style={{
+                    background: "rgba(15,23,42,0.92)",
+                    border: "1px solid rgba(34,211,238,0.4)",
+                    borderRadius: "8px",
+                    padding: "4px 8px",
+                    fontSize: "10px",
+                    color: "#f1f5f9",
+                    backdropFilter: "blur(8px)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <div style={{ fontWeight: 700, color: "#22d3ee" }}>
+                    {weatherMarker.title || weatherMarker.label || locationName || "Searched Location"}
+                  </div>
+                  <div style={{ color: "#94a3b8", fontSize: "9px" }}>
+                    {weatherMarker.temperature_c != null && `Avg ${Math.round(weatherMarker.temperature_c)}°C`}
+                    {weatherMarker.weather_condition && ` · ${weatherMarker.weather_condition}`}
+                  </div>
+                </div>
+              </Tooltip>
+              <Popup className="leaflet-popup-custom">
+                <div style={{ minWidth: "180px", color: "#0f172a" }}>
+                  <div style={{ fontWeight: 800, marginBottom: "6px" }}>
+                    {weatherMarker.title || weatherMarker.label || locationName || "Weather Location"}
+                  </div>
+                  {weatherMarker.temperature_c != null && (
+                    <div>Avg Temp: {Math.round(weatherMarker.temperature_c)}°C</div>
+                  )}
+                  {weatherMarker.weather_condition && (
+                    <div>Condition: {weatherMarker.weather_condition}</div>
+                  )}
+                  {weatherMarker.rain_probability != null && (
+                    <div>Rain Chance: {Math.round(weatherMarker.rain_probability * 100)}%</div>
+                  )}
+                </div>
+              </Popup>
+            </Marker>
           ) : (
             coordinates && coordinates.latitude && coordinates.longitude && (
               <Marker

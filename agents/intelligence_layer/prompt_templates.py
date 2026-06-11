@@ -108,6 +108,28 @@ REQUIRED_OUTPUT_SCHEMA = {
     "final_answer": "string — concise, user-friendly summary answer (3-5 sentences)",
 }
 
+VIEW_TEXT_OUTPUT_SCHEMA = {
+    "prediction": "string - 1-2 sentence weather prediction using only provided evidence",
+    "recommendation": "string - concrete action recommendation",
+    "explanation": "string - brief explanation of why this advice is given",
+    "final_answer": "string - concise user-facing summary",
+    "assumption_summary": "string - short wording for the assumption card",
+    "recommendation_bullets": ["string - concise bullet text; do not include invented numbers"],
+    "insight_bullets": [
+        {
+            "title": "string",
+            "body": "string",
+            "type": "rain|wind|heat|travel|general",
+        }
+    ],
+    "trip_day_summaries": [
+        {
+            "day": "number",
+            "summary": "string - summary for an existing itinerary day only",
+        }
+    ],
+}
+
 # ── Hard Rules (included in every prompt) ────────────────────
 
 HARD_RULES = [
@@ -115,4 +137,5 @@ HARD_RULES = [
     "Do not add typhoon, flood, or official warning unless present in input.",
     "Base recommendations only on the provided evidence and context.",
     "Return valid JSON matching the required_output_schema.",
+    "Do not invent weather values, coordinates, risk levels, dates, stops, or map markers.",
 ]
