@@ -91,6 +91,33 @@ async def run_pipeline(raw_input: str, session_id: str) -> Dict[str, Any]:
     emit("success", "Parser",
          f"domain={parsed.domain} intent={parsed.intent} subtype={parsed.intent_subtype} loc={parsed.location}", ms)
 
+    if parsed.domain == "unknown":
+        emit("step", "Orchestrator", "Query rejected by Parser (Irrelevant domain).")
+        emit("success", "Orchestrator", "Bypassed context agents.", 0)
+        emit("success", "Pipeline", f"✅ Complete in {ms}ms | domain=unknown | trip=False", ms)
+        return {
+            "domain": "unknown",
+            "location": parsed.location,
+            "intent_subtype": parsed.intent_subtype,
+            "prediction": "N/A",
+            "recommendation": "I am a weather-risk intelligence assistant. I can help you with travel planning, construction safety, and agricultural weather impacts. Please ask a related query.",
+            "risk_assessment": {"overall": "Low risk"},
+            "explanation": "Query is outside my domain expertise.",
+            "final_answer": "I am an AI assistant specialized in weather-risk intelligence for tourism, construction, and agriculture. Your query does not seem related to these domains. How can I help you with weather planning today?",
+            "metadata": {},
+            "trip_plan": None,
+            "coordinates": None,
+            "evidence": None,
+            "weather_stats": None,
+            "time_range": None,
+            "weather_path": None,
+            "weather_confidence": None,
+            "weather_mode": None,
+            "sources_used": None,
+            "sources_rejected": None,
+            "weather_debug": None,
+        }
+
     # Step 2: Orchestrate + context
     t = time.time()
     emit("step", "Orchestrator", f"Routing to {parsed.domain} context agent...")
@@ -184,6 +211,37 @@ async def run_pipeline_streaming(
         "intent_subtype": parsed.intent_subtype,
         "location": parsed.location,
     }}
+
+    if parsed.domain == "unknown":
+        emit("step", "Orchestrator", "Query rejected by Parser (Irrelevant domain).")
+        emit("success", "Orchestrator", "Bypassed context agents.", 0)
+        emit("success", "Pipeline", f"✅ WS complete in {ms}ms | domain=unknown", ms)
+        yield {
+            "type": "result",
+            "data": {
+                "domain": "unknown",
+                "location": parsed.location,
+                "intent_subtype": parsed.intent_subtype,
+                "prediction": "N/A",
+                "recommendation": "I am a weather-risk intelligence assistant. I can help you with travel planning, construction safety, and agricultural weather impacts. Please ask a related query.",
+                "risk_assessment": {"overall": "Low risk"},
+                "explanation": "Query is outside my domain expertise.",
+                "final_answer": "I am an AI assistant specialized in weather-risk intelligence for tourism, construction, and agriculture. Your query does not seem related to these domains. How can I help you with weather planning today?",
+                "metadata": {},
+                "trip_plan": None,
+                "coordinates": None,
+                "evidence": None,
+                "weather_stats": None,
+                "time_range": None,
+                "weather_path": None,
+                "weather_confidence": None,
+                "weather_mode": None,
+                "sources_used": None,
+                "sources_rejected": None,
+                "weather_debug": None,
+            }
+        }
+        return
 
     yield {"type": "step", "step": "routing", "data": {"message": f"Routing to {parsed.domain} agent..."}}
     t = time.time()

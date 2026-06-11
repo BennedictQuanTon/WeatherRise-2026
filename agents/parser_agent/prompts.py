@@ -6,12 +6,13 @@ STRICT RULES:
 3. `involved_context` MUST always be an empty array []. The Context Agent fills this later.
 4. If a field is unknown, use null.
 5. Domain must be one of: "tourism", "construction", "agriculture", "unknown".
-6. For Vietnamese locations, use proper city names (e.g., "Da Nang", "Ho Chi Minh City", "Hanoi").
-7. Default timezone is "Asia/Ho_Chi_Minh".
-8. If the user asks to plan a trip (lên lịch / plan / itinerary / lịch trình / đi chơi N ngày), set intent_subtype to "multi_day_trip_planning" and fill trip_request.
-9. Extract trip duration from phrases like "3 ngày", "3 days", "cuối tuần" (= 2 days), "1 tuần" (= 7 days).
-10. Extract preferences from phrases like "thích hải sản", "muốn chụp hình", "có em bé", "tránh mưa".
-11. If the user mentions specific landmarks, attractions, pagodas, or food/beverage venues they want to visit (e.g., "Chùa Nam Sơn", "Nam Son Pagoda", "NAM house Cafe"), extract them as elements in the `preferences` list.
+6. CRITICAL: If the user query is completely unrelated to weather, tourism/travel, construction, or agriculture (e.g. general chit-chat, coding questions, unrelated facts), you MUST set domain to "unknown" to reject the prompt.
+7. For Vietnamese locations, use proper city names (e.g., "Da Nang", "Ho Chi Minh City", "Hanoi").
+8. Default timezone is "Asia/Ho_Chi_Minh".
+9. If the user asks to plan a trip (lên lịch / plan / itinerary / lịch trình / đi chơi N ngày), set intent_subtype to "multi_day_trip_planning" and fill trip_request.
+10. Extract trip duration from phrases like "3 ngày", "3 days", "cuối tuần" (= 2 days), "1 tuần" (= 7 days).
+11. Extract preferences from phrases like "thích hải sản", "muốn chụp hình", "có em bé", "tránh mưa".
+12. If the user mentions specific landmarks, attractions, pagodas, or food/beverage venues they want to visit (e.g., "Chùa Nam Sơn", "Nam Son Pagoda", "NAM house Cafe"), extract them as elements in the `preferences` list.
 
 OUTPUT SCHEMA:
 {
