@@ -1,0 +1,93 @@
+{
+  "request_id": "weather_req_6fe1cbad4ad29715",
+  "location_name": "Hoi An",
+  "forecast_time_local": "2026-05-01",
+  "compared_sources": [
+    "open_meteo",
+    "openweathermap",
+    "seven_timer",
+    "tomorrow_io",
+    "visual_crossing",
+    "weatherapi"
+  ],
+  "values": {
+    "open_meteo": {
+      "rain_probability": 1.0,
+      "temperature_c": 30.483,
+      "humidity_percent": 73.595,
+      "precipitation_mm": 2.6,
+      "wind_speed_kmh": 21.0,
+      "wind_gust_kmh": 46.8
+    },
+    "weatherapi": {
+      "rain_probability": 0.92,
+      "temperature_c": 27.532,
+      "humidity_percent": 78.31,
+      "precipitation_mm": 26.5,
+      "wind_speed_kmh": 23.8,
+      "wind_gust_kmh": 42.3,
+      "visibility_km": 8.996,
+      "uv_index": 12.5,
+      "weather_description": "Partly Cloudy"
+    },
+    "tomorrow_io": {
+      "rain_probability": 0.3,
+      "temperature_c": 30.604,
+      "humidity_percent": 71.967,
+      "precipitation_mm": 17.56,
+      "wind_speed_kmh": 21.24,
+      "wind_gust_kmh": 43.92,
+      "visibility_km": 13.883,
+      "uv_index": 11.0
+    },
+    "visual_crossing": {
+      "rain_probability": 0.0,
+      "temperature_c": 27.542,
+      "humidity_percent": 74.72,
+      "precipitation_mm": 0.2,
+      "wind_speed_kmh": 22.3,
+      "wind_gust_kmh": 26.6,
+      "visibility_km": 10.0,
+      "uv_index": 10.0,
+      "weather_description": "Partially cloudy"
+    },
+    "openweathermap": {
+      "rain_probability": 1.0,
+      "temperature_c": 28.473,
+      "humidity_percent": 74.625,
+      "precipitation_mm": 26.17,
+      "wind_speed_kmh": 25.128,
+      "wind_gust_kmh": 40.608,
+      "visibility_km": 10.0,
+      "weather_description": "overcast clouds"
+    },
+    "seven_timer": {
+      "temperature_c": 27.5,
+      "wind_speed_kmh": 3.0,
+      "weather_description": "cloudyday"
+    }
+  },
+  "disagreement": {
+    "rain_probability_range": 1.0,
+    "rain_probability_mean": 0.644,
+    "temperature_c_range": 3.104,
+    "temperature_c_mean": 28.689,
+    "humidity_percent_range": 6.343,
+    "humidity_percent_mean": 74.643,
+    "precipitation_mm_range": 26.3,
+    "precipitation_mm_mean": 14.606,
+    "wind_speed_kmh_range": 22.128,
+    "wind_speed_kmh_mean": 19.411,
+    "wind_gust_kmh_range": 20.2,
+    "wind_gust_kmh_mean": 40.046,
+    "visibility_km_range": 4.887,
+    "visibility_km_mean": 10.72,
+    "uv_index_range": 2.5,
+    "uv_index_mean": 11.167
+  },
+  "major_conflict": true,
+  "warnings": [
+    "Major rain probability disagreement detected.",
+    "Major wind speed disagreement detected."
+  ]
+}

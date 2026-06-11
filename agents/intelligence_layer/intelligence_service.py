@@ -36,6 +36,8 @@ from .prediction_engine import PredictionEngine
 from .prompt_builder import NIMPromptBuilder
 from .nim_client import NIMClient
 from .response_builder import ResponseBuilder
+from .language_detection import detect_response_language
+from .vietnamese_localizer import QwenVietnameseLocalizer
 from .weather_path_b.gold_weather_decision import build_weather_debug
 from .weather_path_b.path_b_service import PathBWeatherService
 
@@ -57,6 +59,7 @@ class IntelligenceService:
         nim_client: Any | None = None,
         response_builder: Any | None = None,
         path_b_service: Any | None = None,
+        vietnamese_localizer: Any | None = None,
     ):
         self.weather_provider = weather_provider or OpenMeteoProvider()
         self.weather_adapter = weather_adapter or OpenMeteoAdapter()
@@ -66,6 +69,7 @@ class IntelligenceService:
         self.nim_client = nim_client or NIMClient()
         self.response_builder = response_builder or ResponseBuilder()
         self.path_b_service = path_b_service or PathBWeatherService()
+        self.vietnamese_localizer = vietnamese_localizer or QwenVietnameseLocalizer()
 
     async def process(self, processed_json: FullyProcessedJSON) -> IntelligenceOutput:
         """
@@ -115,11 +119,28 @@ class IntelligenceService:
         emit("step", "Intelligence", "NIM LLM Reasoning Call", duration_ms=ms_nim)
 
         # 6. Build final response
-        return self.response_builder.build(
+        response = self.response_builder.build(
             prediction,
             nim_response,
             extra_metadata=self._path_b_metadata(gold_weather_decision),
         )
+        return await self._localize_response_if_needed(processed_json, response)
+
+    async def _localize_response_if_needed(
+        self,
+        processed_json: Any,
+        response: IntelligenceOutput,
+    ) -> IntelligenceOutput:
+        raw_user_input = getattr(processed_json, "raw_user_input", None)
+        response_language = detect_response_language(raw_user_input)
+        if response_language != "vi":
+            metadata = dict(response.metadata)
+            metadata.setdefault("response_language", "en")
+            metadata.setdefault("localization_source", "not_required")
+            return response.model_copy(update={"metadata": metadata})
+
+        emit("step", "Intelligence", "Qwen Vietnamese Localization")
+        return await self.vietnamese_localizer.localize(response)
 
     def _path_b_metadata(self, gold_weather_decision: Any) -> dict[str, Any]:
         debug = build_weather_debug(gold_weather_decision)

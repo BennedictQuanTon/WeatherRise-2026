@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import Optional, Dict, Any, List
+from pydantic import BaseModel, Field
+from typing import Optional, Dict, Any, List, Literal
 
 
 class ChatRequest(BaseModel):
@@ -44,9 +44,155 @@ class TripPlan(BaseModel):
     planning_mode: str = "standard"  # 'standard' | 'weather_optimized' | 'mock_mvp'
 
 
+class LocationPoint(BaseModel):
+    name: str
+    latitude: float
+    longitude: float
+
+
+class DateRange(BaseModel):
+    start: Optional[str] = None
+    end: Optional[str] = None
+    label: Optional[str] = None
+
+
+class MapMarker(BaseModel):
+    id: str
+    label: str
+    latitude: float
+    longitude: float
+    title: Optional[str] = None
+    description: Optional[str] = None
+    order: Optional[int] = None
+    category: Optional[str] = None
+    temperature_c: Optional[float] = None
+    weather_condition: Optional[str] = None
+    rain_probability: Optional[float] = None
+    is_indoor: Optional[bool] = None
+
+
+class WeatherAssumption(BaseModel):
+    summary: str
+    should_go: bool
+    decision_label: str
+    reason: str
+
+
+class WeatherStatistics(BaseModel):
+    avg_temperature_c: Optional[float] = None
+    min_temperature_c: Optional[float] = None
+    max_temperature_c: Optional[float] = None
+    avg_wind_kmh: Optional[float] = None
+    total_rainfall_mm: Optional[float] = None
+    rain_risk: Optional[str] = None
+    wind_risk: Optional[str] = None
+    heat_risk: Optional[str] = None
+    overall_risk: Optional[str] = None
+    most_common_condition: Optional[str] = None
+
+
+class DailyForecastItem(BaseModel):
+    date: str
+    day_label: str
+    condition: str
+    condition_icon: str
+    max_temp_c: Optional[float] = None
+    min_temp_c: Optional[float] = None
+    wind_kmh: Optional[float] = None
+    rain_probability: Optional[float] = None
+    rain_mm: Optional[float] = None
+    risk: Optional[str] = None
+
+
+class WeatherAlternative(BaseModel):
+    name: str
+    description: str
+    distance_label: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+
+
+class WeatherInsight(BaseModel):
+    title: str
+    body: str
+    type: Literal["rain", "wind", "heat", "travel", "general"] = "general"
+
+
+class WeatherMap(BaseModel):
+    center: LocationPoint
+    markers: List[MapMarker] = Field(default_factory=list)
+
+
+class WeatherPredictionView(BaseModel):
+    title: str
+    location: LocationPoint
+    date_range: DateRange
+    assumption: WeatherAssumption
+    statistics: WeatherStatistics
+    daily_forecast: List[DailyForecastItem] = Field(default_factory=list)
+    recommendations: List[str] = Field(default_factory=list)
+    alternatives: List[WeatherAlternative] = Field(default_factory=list)
+    map: WeatherMap
+    insights: List[WeatherInsight] = Field(default_factory=list)
+
+
+class TripSummaryCards(BaseModel):
+    avg_high_c: Optional[float] = None
+    avg_low_c: Optional[float] = None
+    avg_wind_kmh: Optional[float] = None
+    humidity_percent: Optional[float] = None
+    rain_risk: Optional[str] = None
+
+
+class TripViewDayWeather(BaseModel):
+    high_c: Optional[float] = None
+    low_c: Optional[float] = None
+    rain_probability: Optional[float] = None
+    condition: Optional[str] = None
+
+
+class TripViewStop(BaseModel):
+    order: int
+    time: str
+    time_block: str
+    category: str
+    name: str
+    description: Optional[str] = None
+    latitude: float
+    longitude: float
+    forecast_temp_c: Optional[float] = None
+    rain_probability: Optional[float] = None
+    weather_condition: Optional[str] = None
+    is_indoor: bool = False
+    weather_suitability: Optional[str] = None
+
+
+class TripViewDay(BaseModel):
+    day: int
+    date: Optional[str] = None
+    title: str
+    summary: str
+    weather: TripViewDayWeather
+    stops: List[TripViewStop] = Field(default_factory=list)
+
+
+class TripMap(BaseModel):
+    markers: List[MapMarker] = Field(default_factory=list)
+
+
+class TripPlanningView(BaseModel):
+    title: str
+    date_range: DateRange
+    summary_cards: TripSummaryCards
+    ai_summary: str
+    days: List[TripViewDay] = Field(default_factory=list)
+    map: TripMap
+
+
 class ChatResponse(BaseModel):
     session_id: str
     status: str = "success"
+    response_type: Literal["weather_prediction", "trip_planning", "general"] = "general"
     domain: Optional[str] = None
     location: Optional[str] = None
     prediction: Optional[str] = None
@@ -66,3 +212,6 @@ class ChatResponse(BaseModel):
     sources_used: Optional[List[str]] = None
     sources_rejected: Optional[List[str]] = None
     weather_debug: Optional[Dict[str, Any]] = None
+    response_language: Optional[Literal["en", "vi"]] = None
+    weather_view: Optional[WeatherPredictionView] = None
+    trip_view: Optional[TripPlanningView] = None

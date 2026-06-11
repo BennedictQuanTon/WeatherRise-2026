@@ -1,0 +1,12 @@
+{
+  "metadata": {
+    "request_id": "weather_req_af994db969aa3c15",
+    "source_code": "tomorrow_io",
+    "status": "timeout",
+    "raw_file_path": null,
+    "error_message": "",
+    "fetched_at_utc": "2026-06-11T18:40:58.682829+00:00",
+    "latency_ms": 6238
+  },
+  "raw_payload": null
+}

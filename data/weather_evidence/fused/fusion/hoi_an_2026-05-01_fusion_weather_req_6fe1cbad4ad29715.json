@@ -1,0 +1,33 @@
+{
+  "request_id": "weather_req_6fe1cbad4ad29715",
+  "location_name": "Hoi An",
+  "forecast_time_local": "2026-05-01",
+  "fused_values": {
+    "rain_probability": 0.9,
+    "temperature_c": 28.764,
+    "humidity_percent": 74.631,
+    "precipitation_mm": 23.85,
+    "wind_speed_kmh": 22.615,
+    "wind_gust_kmh": 42.12,
+    "visibility_km": 10.73,
+    "uv_index": 11.25,
+    "weather_description": "Partly Cloudy"
+  },
+  "fusion_method": "weighted_score_conservative",
+  "sources_used": [
+    "open_meteo",
+    "tomorrow_io",
+    "openweathermap",
+    "weatherapi",
+    "visual_crossing",
+    "seven_timer"
+  ],
+  "sources_rejected": [],
+  "confidence": 0.761,
+  "warnings": [
+    "Major rain probability disagreement detected.",
+    "Major wind speed disagreement detected.",
+    "Fusion confidence reduced by major source conflict.",
+    "Conservative fusion applied for safety-sensitive weather planning."
+  ]
+}

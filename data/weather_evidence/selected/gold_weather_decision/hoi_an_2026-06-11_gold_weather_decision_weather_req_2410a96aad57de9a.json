@@ -1,0 +1,324 @@
+{
+  "request_id": "weather_req_2410a96aad57de9a",
+  "location_name": "Hoi An",
+  "forecast_time_local": "2026-06-11",
+  "selected_mode": "fused_weather",
+  "confidence": 0.758,
+  "sources_used": [
+    "open_meteo",
+    "tomorrow_io",
+    "openweathermap",
+    "weatherapi",
+    "visual_crossing",
+    "seven_timer"
+  ],
+  "sources_rejected": [],
+  "selected_weather": {
+    "rain_probability": 0.695,
+    "temperature_c": 29.033,
+    "humidity_percent": 74.706,
+    "precipitation_mm": 7.605,
+    "wind_speed_kmh": 21.063,
+    "wind_gust_kmh": 41.64,
+    "visibility_km": 13.357,
+    "uv_index": 11.176,
+    "weather_description": "Partly Cloudy"
+  },
+  "source_scores": [
+    {
+      "source_code": "open_meteo",
+      "rank_score": 0.919,
+      "completeness_score": 1.0,
+      "freshness_score": 1.0,
+      "source_agreement_score": 1.0,
+      "domain_relevance_score": 0.82,
+      "latency_score": 0.8,
+      "quality_score": 1.0,
+      "historical_skill_score": 0.82,
+      "resolution_score": 0.78,
+      "reason": "open_meteo scored 0.919 from quality, completeness, relevance, latency, skill, and resolution."
+    },
+    {
+      "source_code": "tomorrow_io",
+      "rank_score": 0.914,
+      "completeness_score": 1.0,
+      "freshness_score": 1.0,
+      "source_agreement_score": 1.0,
+      "domain_relevance_score": 0.74,
+      "latency_score": 0.8,
+      "quality_score": 1.0,
+      "historical_skill_score": 0.8,
+      "resolution_score": 0.86,
+      "reason": "tomorrow_io scored 0.914 from quality, completeness, relevance, latency, skill, and resolution."
+    },
+    {
+      "source_code": "openweathermap",
+      "rank_score": 0.912,
+      "completeness_score": 1.0,
+      "freshness_score": 1.0,
+      "source_agreement_score": 1.0,
+      "domain_relevance_score": 0.74,
+      "latency_score": 1.0,
+      "quality_score": 1.0,
+      "historical_skill_score": 0.76,
+      "resolution_score": 0.72,
+      "reason": "openweathermap scored 0.912 from quality, completeness, relevance, latency, skill, and resolution."
+    },
+    {
+      "source_code": "weatherapi",
+      "rank_score": 0.901,
+      "completeness_score": 1.0,
+      "freshness_score": 1.0,
+      "source_agreement_score": 1.0,
+      "domain_relevance_score": 0.74,
+      "latency_score": 0.8,
+      "quality_score": 1.0,
+      "historical_skill_score": 0.78,
+      "resolution_score": 0.75,
+      "reason": "weatherapi scored 0.901 from quality, completeness, relevance, latency, skill, and resolution."
+    },
+    {
+      "source_code": "visual_crossing",
+      "rank_score": 0.877,
+      "completeness_score": 1.0,
+      "freshness_score": 1.0,
+      "source_agreement_score": 1.0,
+      "domain_relevance_score": 0.74,
+      "latency_score": 0.55,
+      "quality_score": 1.0,
+      "historical_skill_score": 0.77,
+      "resolution_score": 0.72,
+      "reason": "visual_crossing scored 0.877 from quality, completeness, relevance, latency, skill, and resolution."
+    },
+    {
+      "source_code": "seven_timer",
+      "rank_score": 0.623,
+      "completeness_score": 0.4,
+      "freshness_score": 1.0,
+      "source_agreement_score": 1.0,
+      "domain_relevance_score": 0.45,
+      "latency_score": 0.8,
+      "quality_score": 0.73,
+      "historical_skill_score": 0.55,
+      "resolution_score": 0.45,
+      "reason": "seven_timer scored 0.623 from quality, completeness, relevance, latency, skill, and resolution."
+    }
+  ],
+  "quality_reports": [
+    {
+      "source_code": "open_meteo",
+      "valid": true,
+      "quality_score": 1.0,
+      "missing_fields": [],
+      "invalid_fields": [],
+      "warnings": []
+    },
+    {
+      "source_code": "weatherapi",
+      "valid": true,
+      "quality_score": 1.0,
+      "missing_fields": [],
+      "invalid_fields": [],
+      "warnings": []
+    },
+    {
+      "source_code": "tomorrow_io",
+      "valid": true,
+      "quality_score": 1.0,
+      "missing_fields": [],
+      "invalid_fields": [],
+      "warnings": []
+    },
+    {
+      "source_code": "visual_crossing",
+      "valid": true,
+      "quality_score": 1.0,
+      "missing_fields": [],
+      "invalid_fields": [],
+      "warnings": []
+    },
+    {
+      "source_code": "openweathermap",
+      "valid": true,
+      "quality_score": 1.0,
+      "missing_fields": [],
+      "invalid_fields": [],
+      "warnings": []
+    },
+    {
+      "source_code": "seven_timer",
+      "valid": true,
+      "quality_score": 0.73,
+      "missing_fields": [
+        "rain_probability",
+        "humidity_percent",
+        "precipitation_mm"
+      ],
+      "invalid_fields": [],
+      "warnings": [
+        "Missing critical fields: rain_probability, humidity_percent, precipitation_mm"
+      ]
+    }
+  ],
+  "comparison_matrix": {
+    "request_id": "weather_req_2410a96aad57de9a",
+    "location_name": "Hoi An",
+    "forecast_time_local": "2026-06-11",
+    "compared_sources": [
+      "open_meteo",
+      "openweathermap",
+      "seven_timer",
+      "tomorrow_io",
+      "visual_crossing",
+      "weatherapi"
+    ],
+    "values": {
+      "open_meteo": {
+        "rain_probability": 0.92,
+        "temperature_c": 30.665,
+        "humidity_percent": 72.714,
+        "precipitation_mm": 1.0,
+        "wind_speed_kmh": 21.0,
+        "wind_gust_kmh": 46.8
+      },
+      "weatherapi": {
+        "rain_probability": 0.92,
+        "temperature_c": 27.615,
+        "humidity_percent": 77.446,
+        "precipitation_mm": 26.5,
+        "wind_speed_kmh": 23.8,
+        "wind_gust_kmh": 42.3,
+        "visibility_km": 9.15,
+        "uv_index": 12.5,
+        "weather_description": "Partly Cloudy"
+      },
+      "tomorrow_io": {
+        "rain_probability": 0.3,
+        "temperature_c": 31.002,
+        "humidity_percent": 70.392,
+        "precipitation_mm": 2.08,
+        "wind_speed_kmh": 19.44,
+        "wind_gust_kmh": 39.24,
+        "visibility_km": 14.503,
+        "uv_index": 11.0
+      },
+      "visual_crossing": {
+        "rain_probability": 0.32,
+        "temperature_c": 28.179,
+        "humidity_percent": 78.145,
+        "precipitation_mm": 2.3,
+        "wind_speed_kmh": 28.8,
+        "wind_gust_kmh": 48.6,
+        "visibility_km": 19.977,
+        "uv_index": 10.0,
+        "weather_description": "Partially cloudy"
+      },
+      "openweathermap": {
+        "rain_probability": 1.0,
+        "temperature_c": 28.683,
+        "humidity_percent": 75.025,
+        "precipitation_mm": 6.23,
+        "wind_speed_kmh": 24.948,
+        "wind_gust_kmh": 31.5,
+        "visibility_km": 10.0,
+        "weather_description": "overcast clouds"
+      },
+      "seven_timer": {
+        "temperature_c": 27.5,
+        "wind_speed_kmh": 3.0,
+        "weather_description": "cloudynight"
+      }
+    },
+    "disagreement": {
+      "rain_probability_range": 0.7,
+      "rain_probability_mean": 0.692,
+      "temperature_c_range": 3.502,
+      "temperature_c_mean": 28.941,
+      "humidity_percent_range": 7.753,
+      "humidity_percent_mean": 74.744,
+      "precipitation_mm_range": 25.5,
+      "precipitation_mm_mean": 7.622,
+      "wind_speed_kmh_range": 25.8,
+      "wind_speed_kmh_mean": 20.165,
+      "wind_gust_kmh_range": 17.1,
+      "wind_gust_kmh_mean": 41.688,
+      "visibility_km_range": 10.827,
+      "visibility_km_mean": 13.408,
+      "uv_index_range": 2.5,
+      "uv_index_mean": 11.167
+    },
+    "major_conflict": true,
+    "warnings": [
+      "Major rain probability disagreement detected.",
+      "Major wind speed disagreement detected."
+    ]
+  },
+  "fused_weather": {
+    "request_id": "weather_req_2410a96aad57de9a",
+    "location_name": "Hoi An",
+    "forecast_time_local": "2026-06-11",
+    "fused_values": {
+      "rain_probability": 0.695,
+      "temperature_c": 29.033,
+      "humidity_percent": 74.706,
+      "precipitation_mm": 7.605,
+      "wind_speed_kmh": 21.063,
+      "wind_gust_kmh": 41.64,
+      "visibility_km": 13.357,
+      "uv_index": 11.176,
+      "weather_description": "Partly Cloudy"
+    },
+    "fusion_method": "weighted_score",
+    "sources_used": [
+      "open_meteo",
+      "tomorrow_io",
+      "openweathermap",
+      "weatherapi",
+      "visual_crossing",
+      "seven_timer"
+    ],
+    "sources_rejected": [],
+    "confidence": 0.758,
+    "warnings": [
+      "Major rain probability disagreement detected.",
+      "Major wind speed disagreement detected.",
+      "Fusion confidence reduced by major source conflict."
+    ]
+  },
+  "arbiter_decision": {
+    "selected_weather_mode": "fused_weather",
+    "best_individual_source": "open_meteo",
+    "confidence": 0.758,
+    "arbiter_reason": "NIM arbiter fallback used. First error=None; retry error=None",
+    "risk_interpretation": "Use deterministic fused/selected weather evidence with conservative handling when confidence is reduced.",
+    "warnings": [
+      "Deterministic arbiter fallback used."
+    ]
+  },
+  "earth2_processing_report": {
+    "enabled": false,
+    "location_aligned": false,
+    "time_aligned": false,
+    "model_ready": false,
+    "missing_variables": [],
+    "incompatible_sources": [],
+    "processed_file_path": null,
+    "warnings": [
+      "Earth2Studio disabled; Path B continued with API evidence alignment only."
+    ],
+    "score": null
+  },
+  "evidence_paths": {
+    "comparison_report": "/raid/team/weatherise/workspaces/tuong/WeatherRise-2026/data/weather_evidence/comparison_reports/comparison/hoi_an_2026-06-11_comparison_weather_req_2410a96aad57de9a.json",
+    "fused_weather": "/raid/team/weatherise/workspaces/tuong/WeatherRise-2026/data/weather_evidence/fused/fusion/hoi_an_2026-06-11_fusion_weather_req_2410a96aad57de9a.json",
+    "raw_root": "/raid/team/weatherise/workspaces/tuong/WeatherRise-2026/data/weather_evidence/raw",
+    "normalized_root": "/raid/team/weatherise/workspaces/tuong/WeatherRise-2026/data/weather_evidence/normalized"
+  },
+  "warnings": [
+    "Major rain probability disagreement detected.",
+    "Major wind speed disagreement detected.",
+    "Fusion confidence reduced by major source conflict.",
+    "Deterministic arbiter fallback used.",
+    "Earth2Studio disabled; Path B continued with API evidence alignment only."
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "metadata": {
+    "request_id": "weather_req_af994db969aa3c15",
+    "source_code": "visual_crossing",
+    "status": "timeout",
+    "raw_file_path": null,
+    "error_message": "",
+    "fetched_at_utc": "2026-06-11T18:41:00.673053+00:00",
+    "latency_ms": 8172
+  },
+  "raw_payload": null
+}

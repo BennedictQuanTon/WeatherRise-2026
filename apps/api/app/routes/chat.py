@@ -122,6 +122,7 @@ async def chat(request: ChatRequest):
         return ChatResponse(
             session_id=session_id,
             status="success",
+            response_type=result.get("response_type", "general"),
             domain=result.get("domain"),
             location=result.get("location"),
             prediction=result.get("prediction"),
@@ -140,6 +141,9 @@ async def chat(request: ChatRequest):
             sources_used=result.get("sources_used"),
             sources_rejected=result.get("sources_rejected"),
             weather_debug=result.get("weather_debug"),
+            response_language=result.get("response_language"),
+            weather_view=result.get("weather_view"),
+            trip_view=result.get("trip_view"),
         )
     except Exception as e:
         return ChatResponse(
