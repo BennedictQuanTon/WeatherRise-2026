@@ -1,0 +1,13 @@
+{
+  "hours": [
+    {
+      "time": "2026-06-15T10:00:00Z",
+      "airTemperature": {"sg": 30.8},
+      "windSpeed": {"sg": 6.0},
+      "windGust": {"sg": 9.0},
+      "waveHeight": {"sg": 1.6},
+      "waterTemperature": {"sg": 28.0}
+    }
+  ],
+  "tide": {"data": [{"height": 1.2, "type": "high"}]}
+}

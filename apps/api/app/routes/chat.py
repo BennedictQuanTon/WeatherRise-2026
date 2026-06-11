@@ -134,6 +134,12 @@ async def chat(request: ChatRequest):
             evidence=result.get("evidence"),
             weather_stats=result.get("weather_stats"),
             time_range=result.get("time_range"),
+            weather_path=result.get("weather_path"),
+            weather_confidence=result.get("weather_confidence"),
+            weather_mode=result.get("weather_mode"),
+            sources_used=result.get("sources_used"),
+            sources_rejected=result.get("sources_rejected"),
+            weather_debug=result.get("weather_debug"),
         )
     except Exception as e:
         return ChatResponse(

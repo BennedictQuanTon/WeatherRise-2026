@@ -128,6 +128,12 @@ async def run_pipeline(raw_input: str, session_id: str) -> Dict[str, Any]:
 
     evidence = result.metadata.get("evidence") if result.metadata else None
     weather_stats = result.metadata.get("weather_stats") if result.metadata else None
+    weather_path = result.metadata.get("weather_path") if result.metadata else None
+    weather_confidence = result.metadata.get("weather_confidence") if result.metadata else None
+    weather_mode = result.metadata.get("weather_mode") if result.metadata else None
+    sources_used = result.metadata.get("sources_used") if result.metadata else None
+    sources_rejected = result.metadata.get("sources_rejected") if result.metadata else None
+    weather_debug = result.metadata.get("weather_debug") if result.metadata else None
 
     time_range = None
     if hasattr(processed, "time_range") and processed.time_range:
@@ -152,6 +158,12 @@ async def run_pipeline(raw_input: str, session_id: str) -> Dict[str, Any]:
         "evidence": evidence,
         "weather_stats": weather_stats,
         "time_range": time_range,
+        "weather_path": weather_path,
+        "weather_confidence": weather_confidence,
+        "weather_mode": weather_mode,
+        "sources_used": sources_used,
+        "sources_rejected": sources_rejected,
+        "weather_debug": weather_debug,
     }
 
 
@@ -206,6 +218,12 @@ async def run_pipeline_streaming(
 
     evidence = result.metadata.get("evidence") if result.metadata else None
     weather_stats = result.metadata.get("weather_stats") if result.metadata else None
+    weather_path = result.metadata.get("weather_path") if result.metadata else None
+    weather_confidence = result.metadata.get("weather_confidence") if result.metadata else None
+    weather_mode = result.metadata.get("weather_mode") if result.metadata else None
+    sources_used = result.metadata.get("sources_used") if result.metadata else None
+    sources_rejected = result.metadata.get("sources_rejected") if result.metadata else None
+    weather_debug = result.metadata.get("weather_debug") if result.metadata else None
 
     time_range = None
     if hasattr(processed, "time_range") and processed.time_range:
@@ -232,5 +250,11 @@ async def run_pipeline_streaming(
             "evidence": evidence,
             "weather_stats": weather_stats,
             "time_range": time_range,
+            "weather_path": weather_path,
+            "weather_confidence": weather_confidence,
+            "weather_mode": weather_mode,
+            "sources_used": sources_used,
+            "sources_rejected": sources_rejected,
+            "weather_debug": weather_debug,
         }
     }

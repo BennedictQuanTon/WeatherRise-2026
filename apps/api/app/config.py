@@ -25,6 +25,19 @@ class Settings(BaseSettings):
     # Weather
     openweathermap_api_key: str = ""
     open_meteo_base_url: str = "https://api.open-meteo.com/v1"
+    weather_evidence_dir: str = "/raid/team/weatherise/weather_evidence"
+    weather_evidence_fallback_dir: str = "data/weather_evidence"
+    nim_weather_arbiter_enabled: bool = True
+    nim_weather_arbiter_model: str = ""
+    earth2studio_enabled: bool = False
+    earth2_output_dir: str = "/raid/team/weatherise/weather_evidence/earth2_processed"
+    weatherapi_key: str = ""
+    tomorrow_io_api_key: str = ""
+    visual_crossing_api_key: str = ""
+    weatherbit_api_key: str = ""
+    meteosource_api_key: str = ""
+    stormglass_api_key: str = ""
+    accuweather_api_key: str = ""
 
     # Default location
     default_lat: float = 16.0544

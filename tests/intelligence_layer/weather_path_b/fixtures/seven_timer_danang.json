@@ -1,0 +1,12 @@
+{
+  "init": "2026061500",
+  "dataseries": [
+    {
+      "timepoint": 10,
+      "temp2m": 31,
+      "rh2m": 80,
+      "wind10m": {"speed": 18},
+      "weather": "rain"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "metadata": {
+    "request_id": "weather_req_0ed76b505965b07c",
+    "source_code": "seven_timer",
+    "status": "failed",
+    "raw_file_path": null,
+    "error_message": "Redirect response '302 Found' for url 'https://www.7timer.info/bin/api.pl?lon=58.4024795&lat=37.9230679&product=civil&output=json'\nRedirect location: 'https://www.7timer.info/bin/civil.php?lon=58.4&lat=37.9&ac=0&unit=metric&output=json&tzshift=0&points=24'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/302",
+    "fetched_at_utc": "2026-06-11T12:29:22.421023+00:00",
+    "latency_ms": 793
+  },
+  "raw_payload": null
+}

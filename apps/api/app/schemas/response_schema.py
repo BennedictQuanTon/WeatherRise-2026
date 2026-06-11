@@ -60,3 +60,9 @@ class ChatResponse(BaseModel):
     evidence: Optional[List[str]] = None
     weather_stats: Optional[Dict[str, Any]] = None
     time_range: Optional[Dict[str, str]] = None
+    weather_path: Optional[str] = None
+    weather_confidence: Optional[float] = None
+    weather_mode: Optional[str] = None
+    sources_used: Optional[List[str]] = None
+    sources_rejected: Optional[List[str]] = None
+    weather_debug: Optional[Dict[str, Any]] = None

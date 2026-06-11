@@ -1,0 +1,44 @@
+{
+  "current": {
+    "last_updated": "2026-06-15 10:00",
+    "temp_c": 31.2,
+    "feelslike_c": 36.0,
+    "humidity": 83,
+    "precip_mm": 4.8,
+    "wind_kph": 21.0,
+    "gust_kph": 31.0,
+    "wind_degree": 115,
+    "pressure_mb": 1008,
+    "vis_km": 8,
+    "cloud": 88,
+    "uv": 4,
+    "condition": {"text": "Rain", "code": 1183}
+  },
+  "forecast": {
+    "forecastday": [
+      {
+        "date": "2026-06-15",
+        "day": {"daily_chance_of_rain": 74},
+        "hour": [
+          {
+            "time": "2026-06-15 10:00",
+            "temp_c": 31.2,
+            "feelslike_c": 36.0,
+            "humidity": 83,
+            "precip_mm": 4.8,
+            "chance_of_rain": 74,
+            "wind_kph": 21.0,
+            "gust_kph": 31.0,
+            "wind_degree": 115,
+            "pressure_mb": 1008,
+            "vis_km": 8,
+            "cloud": 88,
+            "uv": 4,
+            "condition": {"text": "Rain", "code": 1183}
+          }
+        ]
+      }
+    ]
+  },
+  "alerts": {"alert": [{"headline": "Rain expected"}]}
+}

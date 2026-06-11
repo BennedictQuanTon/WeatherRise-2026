@@ -1,0 +1,132 @@
+{
+  "request_id": "weather_req_b215b0ac763ccb7d",
+  "location_name": "Da Nang",
+  "forecast_time_local": "2026-06-11",
+  "selected_mode": "fused_weather",
+  "confidence": 0.949,
+  "sources_used": [
+    "open_meteo"
+  ],
+  "sources_rejected": [
+    "weatherapi",
+    "visual_crossing",
+    "openweathermap",
+    "tomorrow_io"
+  ],
+  "selected_weather": {
+    "rain_probability": 1.0,
+    "temperature_c": 31.155,
+    "humidity_percent": 70.173,
+    "precipitation_mm": 0.6,
+    "wind_speed_kmh": 15.6,
+    "wind_gust_kmh": 47.5
+  },
+  "source_scores": [
+    {
+      "source_code": "open_meteo",
+      "rank_score": 0.919,
+      "completeness_score": 1.0,
+      "freshness_score": 1.0,
+      "source_agreement_score": 1.0,
+      "domain_relevance_score": 0.82,
+      "latency_score": 0.8,
+      "quality_score": 1.0,
+      "historical_skill_score": 0.82,
+      "resolution_score": 0.78,
+      "reason": "open_meteo scored 0.919 from quality, completeness, relevance, latency, skill, and resolution."
+    }
+  ],
+  "quality_reports": [
+    {
+      "source_code": "open_meteo",
+      "valid": true,
+      "quality_score": 1.0,
+      "missing_fields": [],
+      "invalid_fields": [],
+      "warnings": []
+    }
+  ],
+  "comparison_matrix": {
+    "request_id": "weather_req_b215b0ac763ccb7d",
+    "location_name": "Da Nang",
+    "forecast_time_local": "2026-06-11",
+    "compared_sources": [
+      "open_meteo"
+    ],
+    "values": {
+      "open_meteo": {
+        "rain_probability": 1.0,
+        "temperature_c": 31.155,
+        "humidity_percent": 70.173,
+        "precipitation_mm": 0.6,
+        "wind_speed_kmh": 15.6,
+        "wind_gust_kmh": 47.5
+      }
+    },
+    "disagreement": {},
+    "major_conflict": false,
+    "warnings": []
+  },
+  "fused_weather": {
+    "request_id": "weather_req_b215b0ac763ccb7d",
+    "location_name": "Da Nang",
+    "forecast_time_local": "2026-06-11",
+    "fused_values": {
+      "rain_probability": 1.0,
+      "temperature_c": 31.155,
+      "humidity_percent": 70.173,
+      "precipitation_mm": 0.6,
+      "wind_speed_kmh": 15.6,
+      "wind_gust_kmh": 47.5
+    },
+    "fusion_method": "weighted_score_conservative",
+    "sources_used": [
+      "open_meteo"
+    ],
+    "sources_rejected": [
+      "weatherapi",
+      "visual_crossing",
+      "openweathermap",
+      "tomorrow_io"
+    ],
+    "confidence": 0.949,
+    "warnings": [
+      "Conservative fusion applied for safety-sensitive weather planning."
+    ]
+  },
+  "arbiter_decision": {
+    "selected_weather_mode": "fused_weather",
+    "best_individual_source": "open_meteo",
+    "confidence": 0.949,
+    "arbiter_reason": "Only open_meteo provided data; it passed all quality checks with a quality_score of 1.0 and high rank_score (0.919). No source conflicts were detected. The fused_weather value was produced via weighted_score_conservative fusion, aligning with the safety_mode='conservative' requirement.",
+    "risk_interpretation": "Conservative outlook: rain probability is certain (1.0) with expected precipitation of 0.6 mm, temperature around 31.2°C, humidity ~70%, and wind speeds up to 15.6 km/h (gusts to 47.5 km/h). Outdoor city tourism activities should anticipate rain and possible strong gusts; consider protective measures or alternative indoor plans.",
+    "warnings": [
+      "Conservative fusion applied for safety-sensitive weather planning.",
+      "Earth2Studio disabled; processing relied solely on API evidence alignment."
+    ]
+  },
+  "earth2_processing_report": {
+    "enabled": false,
+    "location_aligned": false,
+    "time_aligned": false,
+    "model_ready": false,
+    "missing_variables": [],
+    "incompatible_sources": [],
+    "processed_file_path": null,
+    "warnings": [
+      "Earth2Studio disabled; Path B continued with API evidence alignment only."
+    ],
+    "score": null
+  },
+  "evidence_paths": {
+    "comparison_report": "/raid/team/weatherise/workspaces/tuong/WeatherRise-2026/data/weather_evidence/comparison_reports/comparison/da_nang_2026-06-11_comparison_weather_req_b215b0ac763ccb7d.json",
+    "fused_weather": "/raid/team/weatherise/workspaces/tuong/WeatherRise-2026/data/weather_evidence/fused/fusion/da_nang_2026-06-11_fusion_weather_req_b215b0ac763ccb7d.json",
+    "raw_root": "/raid/team/weatherise/workspaces/tuong/WeatherRise-2026/data/weather_evidence/raw",
+    "normalized_root": "/raid/team/weatherise/workspaces/tuong/WeatherRise-2026/data/weather_evidence/normalized"
+  },
+  "warnings": [
+    "Conservative fusion applied for safety-sensitive weather planning.",
+    "Earth2Studio disabled; processing relied solely on API evidence alignment.",
+    "Earth2Studio disabled; Path B continued with API evidence alignment only."
+  ]
+}

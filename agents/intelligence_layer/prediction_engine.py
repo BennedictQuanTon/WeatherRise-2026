@@ -1,5 +1,5 @@
 """
-Prediction Engine — Deterministic risk scoring on Canonical Weather Data.
+Prediction Engine — Deterministic risk scoring on trusted weather data.
 
 This is the reliable backbone. NIM is used for natural language only.
 The Prediction Engine decides risk levels. NIM must never override them.
@@ -244,18 +244,20 @@ class PredictionEngine:
     def predict(
         self,
         processed_json: Any,
-        canonical_weather: CanonicalWeatherData,
+        canonical_weather: Any,
     ) -> PredictionResult:
         """
-        Run domain-specific prediction on canonical weather data.
+        Run domain-specific prediction on trusted weather data.
 
         Args:
             processed_json: FullyProcessedJSON or dict with at least 'domain'
-            canonical_weather: Normalized weather data
+            canonical_weather: CanonicalWeatherData or Path B GoldWeatherDecision
 
         Returns:
             PredictionResult with deterministic risk assessment.
         """
+        canonical_weather = self._to_canonical(processed_json, canonical_weather)
+
         if hasattr(processed_json, "model_dump"):
             pj_dict = processed_json.model_dump()
         elif isinstance(processed_json, dict):
@@ -266,3 +268,25 @@ class PredictionEngine:
         domain = pj_dict.get("domain", "tourism")
         predictor = self.PREDICTORS.get(domain, predict_tourism)
         return predictor(pj_dict, canonical_weather)
+
+    def _to_canonical(self, processed_json: Any, weather: Any) -> CanonicalWeatherData:
+        if isinstance(weather, CanonicalWeatherData):
+            return weather
+        if hasattr(weather, "selected_weather"):
+            try:
+                from .weather_path_b.gold_weather_decision import gold_decision_to_canonical
+                from .weather_path_b.weather_requirement_reader import WeatherRequirementReader
+
+                requirement = WeatherRequirementReader().read(processed_json)
+                return gold_decision_to_canonical(weather, requirement)
+            except Exception:
+                pass
+        return CanonicalWeatherData(
+            source="none",
+            source_type="fallback",
+            location={},
+            forecast_window={},
+            resolution={"temporal": "none", "spatial": "none"},
+            variables=[],
+            data_quality={"confidence": 0, "warnings": ["Trusted weather unavailable."]},
+        )

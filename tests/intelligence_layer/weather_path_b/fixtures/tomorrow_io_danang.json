@@ -1,0 +1,24 @@
+{
+  "timelines": {
+    "hourly": [
+      {
+        "time": "2026-06-15T10:00:00Z",
+        "values": {
+          "temperature": 31.1,
+          "temperatureApparent": 35.5,
+          "humidity": 81,
+          "precipitationProbability": 76,
+          "rainIntensity": 4.5,
+          "windSpeed": 5.8,
+          "windGust": 8.7,
+          "windDirection": 112,
+          "pressureSurfaceLevel": 1007,
+          "visibility": 7.5,
+          "cloudCover": 86,
+          "uvIndex": 4,
+          "weatherCode": 4001
+        }
+      }
+    ]
+  }
+}
