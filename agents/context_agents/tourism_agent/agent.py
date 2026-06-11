@@ -123,7 +123,6 @@ class TourismContextAgent(BaseContextAgent):
         if forecast_result:
             mcp_ctx.weather_forecast = forecast_result
 
-        # ── 4. KB Query: TourismRetriever 3-tier ─────────────────
         kb_attractions = await self._retriever.get_attractions(
             location=location,
             coordinates=mcp_ctx.coordinates,
@@ -134,6 +133,56 @@ class TourismContextAgent(BaseContextAgent):
             coordinates=mcp_ctx.coordinates,
             limit=15,
         )
+
+        # ── 4b. Extract & Prepend User-Requested Specific Places ─
+        preferred_places = []
+        if parsed.trip_request and parsed.trip_request.preferences:
+            from knowledge.vector_store.client import VectorStoreClient
+            vs = VectorStoreClient()
+            for pref in parsed.trip_request.preferences:
+                if len(pref) > 4 and pref.lower() not in {"seafood", "nature", "beach", "photo_spot", "family_friendly", "tránh mưa", "rain_sensitive", "indoor", "general", "balanced", "relaxed"}:
+                    print(f"[TourismContextAgent] Querying Qdrant specifically for preferred place: '{pref}'")
+                    try:
+                        results = await vs.search(
+                            collection="tourism_knowledge",
+                            query_text=pref,
+                            score_threshold=0.42,
+                            limit=3
+                        )
+                        for r in results:
+                            place_dict = {
+                                **r.payload,
+                                "place_id": r.place_id,
+                                "search_score": r.score
+                            }
+                            preferred_places.append(place_dict)
+                    except Exception as e:
+                        print(f"[TourismContextAgent] Error searching preferred place '{pref}': {e}")
+                        
+        if preferred_places:
+            existing_attr_ids = {p.get("place_id") or p.get("id") for p in kb_attractions.data} if kb_attractions.data else set()
+            existing_rest_ids = {p.get("place_id") or p.get("id") for p in kb_restaurants.data} if kb_restaurants.data else set()
+            
+            added_attrs = []
+            added_rests = []
+            
+            for p in preferred_places:
+                pid = p.get("place_id") or p.get("id")
+                if p.get("category") == "restaurant":
+                    if pid not in existing_rest_ids:
+                        added_rests.append(p)
+                        existing_rest_ids.add(pid)
+                else:
+                    if pid not in existing_attr_ids:
+                        added_attrs.append(p)
+                        existing_attr_ids.add(pid)
+            
+            if added_attrs and kb_attractions.data is not None:
+                kb_attractions.data = added_attrs + kb_attractions.data
+                print(f"[TourismContextAgent] Added {len(added_attrs)} preferred attractions: {[x.get('name_vi') for x in added_attrs]}")
+            if added_rests and kb_restaurants.data is not None:
+                kb_restaurants.data = added_rests + kb_restaurants.data
+                print(f"[TourismContextAgent] Added {len(added_rests)} preferred restaurants: {[x.get('name_vi') for x in added_rests]}")
 
         # ── 5. Context Gap Report ────────────────────────────────
         involved_context = self.get_required_context(parsed)
