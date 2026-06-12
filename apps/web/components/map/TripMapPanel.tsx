@@ -214,13 +214,8 @@ export default function TripMapPanel({
                       }}
                     >
                       <div style={{ fontWeight: 700, color: color }}>{stop.name}</div>
-                      <div style={{ color: "#94a3b8", fontSize: "9px" }}>
-                        {stop.planned_time}
-                        {stop.forecast_temp != null && (
-                          <span style={{ color: "#fbbf24", marginLeft: 4 }}>
-                            🌡 {stop.forecast_temp}°C
-                          </span>
-                        )}
+                      <div style={{ color: "#fbbf24", fontSize: "10px", fontWeight: 800 }}>
+                        {stop.forecast_temp != null ? `🌡 ${stop.forecast_temp}°C` : ""}
                       </div>
                     </div>
                   </Tooltip>
