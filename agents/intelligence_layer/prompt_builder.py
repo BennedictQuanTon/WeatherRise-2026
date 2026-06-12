@@ -123,7 +123,7 @@ class NIMPromptBuilder:
             "user_constraints": constraints,
             "knowledge_context": knowledge,
             "mcp_context": mcp_ctx,
-            "gold_weather_decision": weather_dict,
+            "gold_weather_decision": self._slim_gold(weather_dict),
             "weather_confidence": weather_dict.get("confidence") if isinstance(weather_dict, dict) else None,
             "sources_used": weather_dict.get("sources_used") if isinstance(weather_dict, dict) else [],
             "source_conflicts": (
@@ -148,3 +148,29 @@ class NIMPromptBuilder:
             {"role": "system", "content": get_system_prompt(domain)},
             {"role": "user", "content": json.dumps(user_payload, ensure_ascii=False, indent=2)},
         ]
+
+    def _slim_gold(self, weather_dict: dict[str, Any]) -> dict[str, Any]:
+        """Reduce token footprint by keeping only the fields NIM needs for natural language generation."""
+        if not isinstance(weather_dict, dict):
+            return weather_dict
+            
+        slim = {
+            "selected_weather": weather_dict.get("selected_weather"),
+            "confidence": weather_dict.get("confidence"),
+            "sources_used": weather_dict.get("sources_used"),
+            "sources_rejected": weather_dict.get("sources_rejected"),
+        }
+        
+        arbiter = weather_dict.get("arbiter_decision") or {}
+        if arbiter:
+            slim["arbiter_decision"] = {
+                "arbiter_reason": arbiter.get("arbiter_reason"),
+                "risk_interpretation": arbiter.get("risk_interpretation"),
+                "warnings": arbiter.get("warnings")
+            }
+            
+        fused = weather_dict.get("fused_weather") or {}
+        if fused and fused.get("fused_values"):
+            slim["fused_weather"] = {"fused_values": fused.get("fused_values")}
+            
+        return slim
