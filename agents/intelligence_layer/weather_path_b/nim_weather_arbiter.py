@@ -69,6 +69,20 @@ class NIMWeatherArbiter:
         if not self.enabled:
             return self._fallback(fused_weather, source_scores, quality_reports, "NIM Weather Arbiter disabled by config.")
 
+        from agents.cache_client import get_cache_client
+        cache = get_cache_client()
+        lat = round(requirement.latitude, 2) if requirement.latitude else 0
+        lon = round(requirement.longitude, 2) if requirement.longitude else 0
+        source_str = "-".join(sorted([s.source_code for s in source_scores]))
+        cache_key = cache.generate_key("arbiter", lat, lon, requirement.domain, requirement.start_date, source_str)
+        
+        cached_data = await cache.get(cache_key)
+        if cached_data:
+            try:
+                return ArbiterDecision(**cached_data)
+            except Exception:
+                pass
+
         messages = self._messages(
             requirement,
             source_scores,
@@ -81,6 +95,7 @@ class NIMWeatherArbiter:
         response = await self.nim_client.chat(messages)
         decision = self._parse_decision(response.content)
         if decision:
+            await cache.set(cache_key, decision.model_dump(), ttl_seconds=900)
             return decision
 
         retry_messages = [
@@ -93,6 +108,7 @@ class NIMWeatherArbiter:
         retry = await self.nim_client.chat(retry_messages)
         decision = self._parse_decision(retry.content)
         if decision:
+            await cache.set(cache_key, decision.model_dump(), ttl_seconds=900)
             return decision
 
         return self._fallback(

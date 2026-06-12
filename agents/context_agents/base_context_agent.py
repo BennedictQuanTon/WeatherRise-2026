@@ -62,25 +62,38 @@ class BaseContextAgent:
         involved_context = self.get_required_context(parsed)
         mcp_ctx = MCPContext()
 
-        # 1. Resolve coordinates via MCP
-        if parsed.location:
-            coord_result = await self.call_mcp("location.resolveCoordinates", {
-                "location": parsed.location
-            })
+        # 1. Resolve coordinates and time range concurrently via MCP
+        coord_task = None
+        time_task = None
+        
+        if parsed.geographical_location.coordinates and parsed.geographical_location.coordinates.get("latitude"):
+            mcp_ctx.coordinates = parsed.geographical_location.coordinates
+        elif parsed.location:
+            import asyncio
+            coord_task = asyncio.create_task(
+                self.call_mcp("location.resolveCoordinates", {"location": parsed.location})
+            )
+
+        if parsed.time_range.raw_text:
+            import asyncio
+            time_task = asyncio.create_task(
+                self.call_mcp("time.resolveTimeRange", {
+                    "raw_text": parsed.time_range.raw_text,
+                    "timezone": parsed.time_range.timezone,
+                })
+            )
+
+        if coord_task:
+            coord_result = await coord_task
             if coord_result.get("latitude"):
                 mcp_ctx.coordinates = {
                     "latitude": coord_result["latitude"],
                     "longitude": coord_result["longitude"],
                 }
-                # Fill back into geographical_location
                 parsed.geographical_location.coordinates = mcp_ctx.coordinates
 
-        # 2. Resolve time range via MCP
-        if parsed.time_range.raw_text:
-            time_result = await self.call_mcp("time.resolveTimeRange", {
-                "raw_text": parsed.time_range.raw_text,
-                "timezone": parsed.time_range.timezone,
-            })
+        if time_task:
+            time_result = await time_task
             if time_result.get("start"):
                 parsed.time_range.start = time_result["start"]
                 parsed.time_range.end = time_result.get("end")

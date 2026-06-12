@@ -131,6 +131,7 @@ class IntelligenceService:
         processed_json: Any,
         response: IntelligenceOutput,
     ) -> IntelligenceOutput:
+        from .language_detection import detect_response_language
         raw_user_input = getattr(processed_json, "raw_user_input", None)
         response_language = detect_response_language(raw_user_input)
         if response_language != "vi":
