@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 import {
@@ -5,7 +7,8 @@ import {
   Wind, Droplets, Thermometer, MapPin, ExternalLink,
   Sun, Moon, Paperclip, Sliders, RefreshCw, Briefcase,
   Building, Leaf, Bell, Sparkles, LayoutGrid, Wifi,
-  ShieldCheck, CheckCircle2, Calendar, Map, ArrowUp, ArrowRight, Search
+  ShieldCheck, CheckCircle2, Calendar, Map, ArrowUp, ArrowRight, Search,
+  Cloud, CloudRain, CloudSun
 } from "lucide-react";
 
 // Dynamic import — Leaflet requires window object (no SSR)
@@ -590,15 +593,29 @@ function blockLabel(value: string) {
   return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function WeatherMetricCard({ label, value, sub, Icon }: { label: string; value: string; sub?: string; Icon: any }) {
+function getWeatherIcon(condition?: string) {
+  const cond = (condition || "").toLowerCase();
+  if (cond.includes("thunder") || cond.includes("lightning") || cond.includes("storm")) {
+    return CloudLightning;
+  }
+  if (cond.includes("rain") || cond.includes("shower") || cond.includes("drizzle")) {
+    return CloudRain;
+  }
+  if (cond.includes("partly") && cond.includes("cloud")) {
+    return CloudSun;
+  }
+  if (cond.includes("cloud") || cond.includes("overcast") || cond.includes("mist") || cond.includes("fog")) {
+    return Cloud;
+  }
+  return Sun;
+}
+
+function WeatherMetricCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-xl border border-cyan-400/10 bg-white/[0.04] p-3 min-h-[88px] flex items-center justify-between gap-3">
-      <div>
-        <div className="text-[10px] text-slate-400">{label}</div>
-        <div className="text-xl font-black text-white mt-1">{value}</div>
-        {sub && <div className="text-[10px] text-slate-500 mt-1">{sub}</div>}
-      </div>
-      <Icon size={20} className="text-cyan-300 shrink-0" />
+    <div className="rounded-2xl border border-slate-200/40 dark:border-white/5 bg-slate-100/50 dark:bg-white/5 p-5 shadow-sm transition-all hover:shadow-md hover:border-blue-400/50 dark:hover:border-cyan-400/50">
+      <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</div>
+      <div className="text-2xl font-black text-slate-900 dark:text-white mt-1.5">{value}</div>
+      {sub && <div className="text-sm font-semibold text-slate-600 dark:text-slate-300 mt-1">{sub}</div>}
     </div>
   );
 }
@@ -607,112 +624,194 @@ function WeatherPredictionDemoView({ result }: { result: ChatResult }) {
   const view = result.weather_view;
   if (!view) return null;
   const stats = view.statistics;
-  const decisionColor = view.assumption.should_go ? "#69f0ae" : "#ff5252";
+  const decisionColor = view.assumption.should_go ? "#10b981" : "#f43f5e"; // emerald-500 or rose-500
 
   return (
-    <div className="space-y-5 text-slate-100">
-      <div className="space-y-2">
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-bold text-cyan-200">
-          <MapPin size={11} /> {view.location.name}
+    <div className="space-y-6">
+      {/* Title & Badge */}
+      <div className="space-y-2.5">
+        <div className="flex items-center gap-1.5 rounded-full border border-blue-100 dark:border-cyan-950/30 bg-blue-50/50 dark:bg-cyan-950/20 px-3 py-1 text-xs font-bold text-blue-600 dark:text-cyan-400 w-fit">
+          <MapPin size={13} /> {view.location.name}
         </div>
-        <h2 className="text-2xl md:text-3xl font-black leading-tight">{view.title}</h2>
-        {view.date_range.label && <p className="text-xs text-slate-400">{view.date_range.label}</p>}
+        <h2 className="font-serif-heading text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white leading-tight">
+          {view.title}
+        </h2>
+        {view.date_range.label && (
+          <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 font-semibold">
+            {view.date_range.label}
+          </p>
+        )}
       </div>
 
-      <div className="rounded-xl border border-cyan-400/10 bg-cyan-950/20 p-4 grid grid-cols-1 md:grid-cols-[1fr_180px] gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-sm font-bold">
-            <MapPin size={14} className="text-cyan-300" />
-            Assumption
-          </div>
-          <p className="text-xs text-slate-300 leading-relaxed mt-3">{view.assumption.summary}</p>
-        </div>
-        <div className="rounded-xl border border-white/5 bg-slate-950/40 p-4 flex items-center justify-between">
+      {/* Assumption & Decision Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="md:col-span-2 rounded-2xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-slate-900/40 backdrop-blur-md p-6 shadow-sm flex flex-col justify-between">
           <div>
-            <div className="text-[10px] text-slate-400">Should you proceed?</div>
-            <div className="text-xl font-black mt-1" style={{ color: decisionColor }}>{view.assumption.decision_label}</div>
-            <div className="text-[10px] text-slate-400 mt-1">{view.assumption.reason}</div>
+            <div className="flex items-center gap-2 text-base md:text-lg font-extrabold text-slate-900 dark:text-white">
+              <MapPin size={16} className="text-blue-600 dark:text-cyan-400" />
+              Assumption
+            </div>
+            <p className="text-sm md:text-base text-slate-700 dark:text-slate-300 leading-relaxed mt-3 font-semibold">
+              {view.assumption.summary}
+            </p>
           </div>
-          <CheckCircle2 size={22} style={{ color: decisionColor }} />
+        </div>
+        <div className="rounded-2xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-slate-900/40 backdrop-blur-md p-6 shadow-sm flex items-center justify-between gap-4">
+          <div>
+            <div className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Should you travel?</div>
+            <div className="text-2xl md:text-3xl font-black mt-1.5" style={{ color: decisionColor }}>
+              {view.assumption.decision_label}
+            </div>
+            <div className="text-sm text-slate-600 dark:text-slate-400 mt-1.5 font-semibold">{view.assumption.reason}</div>
+          </div>
+          <div className="p-2.5 rounded-full" style={{ backgroundColor: `${decisionColor}15` }}>
+            <CheckCircle2 size={32} style={{ color: decisionColor }} />
+          </div>
         </div>
       </div>
 
-      <div>
-        <div className="flex items-center gap-2 text-sm font-bold text-cyan-300 mb-3">
-          <Calendar size={14} /> Weather Overview
+      {/* 7-Day Weather Overview */}
+      <div className="rounded-3xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-slate-900/40 backdrop-blur-md p-6 shadow-sm space-y-6">
+        <div className="flex items-center gap-2 border-b border-slate-200/50 dark:border-white/10 pb-3">
+          <Calendar size={16} className="text-blue-600 dark:text-cyan-400" />
+          <span className="text-base font-extrabold text-slate-900 dark:text-white">7-Day Weather Overview</span>
         </div>
+
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-          <WeatherMetricCard label="Avg Temperature" value={formatTemp(stats.avg_temperature_c)} sub={`Min ${formatTemp(stats.min_temperature_c)} · Max ${formatTemp(stats.max_temperature_c)}`} Icon={Thermometer} />
-          <WeatherMetricCard label="Avg Wind" value={formatNumber(stats.avg_wind_kmh, " km/h")} sub={stats.wind_risk ? `${stats.wind_risk} wind risk` : undefined} Icon={Wind} />
-          <WeatherMetricCard label="Total Rainfall" value={formatNumber(stats.total_rainfall_mm, " mm")} sub={stats.rain_risk ? `${stats.rain_risk} rain risk` : undefined} Icon={Droplets} />
-          <WeatherMetricCard label="Condition" value={stats.most_common_condition || "n/a"} sub={stats.overall_risk ? `${stats.overall_risk} overall risk` : undefined} Icon={Sun} />
+          <WeatherMetricCard label="Avg Temperature" value={formatTemp(stats.avg_temperature_c)} sub={`Min ${formatTemp(stats.min_temperature_c)} · Max ${formatTemp(stats.max_temperature_c)}`} />
+          <WeatherMetricCard label="Avg Wind" value={formatNumber(stats.avg_wind_kmh, " km/h")} sub={stats.wind_risk ? `${stats.wind_risk} wind risk` : undefined} />
+          <WeatherMetricCard label="Total Rainfall" value={formatNumber(stats.total_rainfall_mm, " mm")} sub={stats.rain_risk ? `${stats.rain_risk} rain risk` : undefined} />
+          <WeatherMetricCard label="Weather Condition (Most common)" value={stats.most_common_condition || "n/a"} sub={stats.overall_risk ? `${stats.overall_risk} overall risk` : undefined} />
+        </div>
+
+        {view.daily_forecast.length > 0 && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-[repeat(auto-fill,minmax(110px,1fr))] gap-3">
+              {view.daily_forecast.slice(0, 7).map((day) => {
+                const IconComponent = getWeatherIcon(day.condition);
+                return (
+                  <div key={day.date} className="rounded-2xl border border-slate-200/50 dark:border-white/5 bg-slate-100/50 dark:bg-white/5 p-4 text-center min-h-[160px] flex flex-col justify-between transition-all hover:border-blue-400 dark:hover:border-cyan-400 hover:shadow-md hover:scale-[1.02]">
+                    <div>
+                      <div className="text-base font-extrabold text-slate-800 dark:text-slate-200">{day.day_label.split(" ")[0]}</div>
+                      <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">{day.date.slice(5)}</div>
+                    </div>
+                    <div className="my-3 flex justify-center">
+                      <IconComponent size={28} className="text-blue-600 dark:text-cyan-400" />
+                    </div>
+                    <div>
+                      <div className="text-xl font-extrabold text-slate-900 dark:text-white">{formatTemp(day.max_temp_c)}</div>
+                      <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">{formatTemp(day.min_temp_c)}</div>
+                    </div>
+                    <div className="mt-2.5 pt-2 border-t border-slate-200/50 dark:border-white/5 flex items-center justify-around text-xs font-semibold text-slate-600 dark:text-slate-300">
+                      <span className="flex items-center gap-0.5"><Wind size={12} /> {formatNumber(day.wind_kmh, "")}</span>
+                      <span className="flex items-center gap-0.5"><Droplets size={12} /> {formatPercent(day.rain_probability)}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Condition Legend */}
+            <div className="flex flex-wrap items-center justify-center gap-6 mt-4 pt-3 border-t border-slate-200/50 dark:border-white/10 text-xs font-semibold text-slate-500 dark:text-slate-400">
+              <div className="flex items-center gap-1.5"><Sun size={14} className="text-amber-500" /> Sunny</div>
+              <div className="flex items-center gap-1.5"><CloudSun size={14} className="text-blue-500 dark:text-cyan-400" /> Partly Cloudy</div>
+              <div className="flex items-center gap-1.5"><Cloud size={14} className="text-slate-400" /> Cloudy</div>
+              <div className="flex items-center gap-1.5"><CloudRain size={14} className="text-blue-600 dark:text-cyan-500" /> Rain</div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Recommendation Checklist */}
+      <div className="rounded-3xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-slate-900/40 backdrop-blur-md p-6 shadow-sm">
+        <div className="text-base md:text-lg font-extrabold text-emerald-600 dark:text-emerald-400 mb-4 flex items-center gap-2">
+          <CheckCircle2 size={16} /> Recommendation
+        </div>
+        <div className="space-y-3">
+          {view.recommendations.map((item, idx) => (
+            <div key={idx} className="flex gap-2.5 text-sm md:text-base text-slate-700 dark:text-slate-300 font-semibold leading-relaxed">
+              <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+              <span>{item}</span>
+            </div>
+          ))}
         </div>
       </div>
 
-      {view.daily_forecast.length > 0 && (
-        <div className="rounded-xl border border-cyan-400/10 bg-white/[0.03] p-3">
-          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2">
-            {view.daily_forecast.slice(0, 7).map((day) => (
-              <div key={day.date} className="rounded-lg border border-white/5 bg-slate-950/30 p-3 text-center min-h-[132px]">
-                <div className="text-xs font-bold text-white">{day.day_label.split(" ")[0]}</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">{day.date.slice(5)}</div>
-                <Sun size={18} className="mx-auto mt-3 text-amber-300" />
-                <div className="mt-3 text-lg font-black">{formatTemp(day.max_temp_c)}</div>
-                <div className="text-[10px] text-slate-400">{formatTemp(day.min_temp_c)}</div>
-                <div className="mt-2 flex items-center justify-center gap-3 text-[10px] text-slate-400">
-                  <span>{formatNumber(day.wind_kmh, " km/h")}</span>
-                  <span>{formatPercent(day.rain_probability)}</span>
+      {/* Alternatives List */}
+      {view.alternatives.length > 0 && (
+        <div className="rounded-3xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-slate-900/40 backdrop-blur-md p-6 shadow-sm space-y-4">
+          <div>
+            <div className="text-base md:text-lg font-extrabold text-purple-600 dark:text-purple-400 flex items-center gap-2">
+              <MapPin size={16} /> Alternative Options (If Weather Turns Poor)
+            </div>
+            <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 mt-1.5 font-semibold">
+              If heavy rain or storms disrupt your plans in {view.location.name}, consider these nearby options:
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {view.alternatives.map((alt, idx) => (
+              <div key={`${alt.name}-${idx}`} className="rounded-2xl border border-slate-200/50 dark:border-white/5 bg-slate-100/50 dark:bg-white/5 p-5 transition-all hover:border-purple-400/50 dark:hover:border-purple-400/55 hover:shadow-md hover:scale-[1.01]">
+                <div className="text-base md:text-lg font-extrabold text-slate-900 dark:text-white">{alt.name}</div>
+                {alt.distance_label && (
+                  <div className="text-xs font-bold text-slate-400 dark:text-slate-500 mt-1">{alt.distance_label}</div>
+                )}
+                <div className="text-sm md:text-base text-slate-600 dark:text-slate-300 mt-2.5 leading-relaxed font-semibold">
+                  {alt.description}
                 </div>
               </div>
             ))}
           </div>
         </div>
       )}
-
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div className="rounded-xl border border-emerald-400/15 bg-emerald-500/5 p-4">
-          <div className="text-sm font-bold text-emerald-300 mb-3">Recommendation</div>
-          <div className="space-y-2">
-            {view.recommendations.map((item, idx) => (
-              <div key={idx} className="flex gap-2 text-xs text-slate-200 leading-relaxed">
-                <CheckCircle2 size={13} className="text-emerald-300 shrink-0 mt-0.5" />
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-cyan-400/10 bg-cyan-500/5 p-4">
-          <div className="text-sm font-bold text-cyan-300 mb-3">What This Means For You</div>
-          <div className="space-y-2">
-            {view.insights.map((item, idx) => (
-              <div key={idx} className="rounded-lg bg-slate-950/30 px-3 py-2">
-                <div className="text-xs font-bold text-cyan-200">{item.title}</div>
-                <div className="text-[11px] text-slate-400 leading-relaxed mt-1">{item.body}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {view.alternatives.length > 0 && (
-        <div className="rounded-xl border border-purple-400/15 bg-purple-500/5 p-4">
-          <div className="text-sm font-bold text-purple-200 mb-3">Alternative Options If Weather Turns Poor</div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {view.alternatives.map((alt, idx) => (
-              <div key={`${alt.name}-${idx}`} className="rounded-lg border border-white/5 bg-slate-950/25 p-3">
-                <div className="text-xs font-bold text-white">{alt.name}</div>
-                {alt.distance_label && <div className="text-[10px] text-slate-500 mt-1">{alt.distance_label}</div>}
-                <div className="text-[11px] text-slate-400 mt-2 leading-relaxed">{alt.description}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <PathBDebugPanel result={result} />
     </div>
   );
+}
+
+function convertTripViewToPlan(view?: any): any {
+  if (!view || !view.days) return null;
+  return {
+    duration_days: view.days.length,
+    location: view.title ? view.title.replace("Plan for ", "") : "Trip",
+    days: view.days.map((day: any) => ({
+      day: day.day,
+      theme: day.title,
+      primary_area: day.summary,
+      date: day.date,
+      weather_condition: day.weather?.condition,
+      stops: (day.stops || []).map((stop: any) => ({
+        order: stop.order,
+        place_id: `${stop.latitude}-${stop.longitude}-${stop.name}`,
+        name: stop.name,
+        lat: stop.latitude,
+        lon: stop.longitude,
+        time_block: stop.time_block,
+        planned_time: stop.time,
+        forecast_temp: stop.forecast_temp_c,
+        weather_condition: stop.weather_condition,
+        duration_minutes: stop.duration_minutes ?? 60,
+        is_indoor: stop.is_indoor,
+        category: stop.category,
+        vibe_tags: stop.vibe_tags ?? [],
+      }))
+    }))
+  };
+}
+
+function getStopThumbnail(name: string, category: string): string {
+  const normalized = name.toLowerCase();
+  if (normalized.includes("bình mì") || normalized.includes("bánh mì") || normalized.includes("cơm") || normalized.includes("mì quảng") || normalized.includes("hải sản") || category === "restaurant") {
+    return "https://images.unsplash.com/photo-1583085292233-a3d606ccb4b4?auto=format&fit=crop&w=150&q=80"; // Vietnamese food/Banh Mi
+  }
+  if (normalized.includes("cà phê") || normalized.includes("cafe") || normalized.includes("coffee") || category === "cafe") {
+    return "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=150&q=80"; // Cafe
+  }
+  if (normalized.includes("biển") || normalized.includes("beach") || normalized.includes("my khe") || category === "beach") {
+    return "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=150&q=80"; // Beach
+  }
+  if (normalized.includes("ngũ hành sơn") || normalized.includes("marble") || normalized.includes("chùa") || normalized.includes("pagoda") || category === "attraction") {
+    return "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=150&q=80"; // Da Nang / Marble mountains/ Vietnam
+  }
+  return "https://images.unsplash.com/photo-1596422846543-75c6fc18a523?auto=format&fit=crop&w=150&q=80"; // Generic Vietnam travel
 }
 
 function TripPlanningDemoView({ result, activeDay, setActiveDay }: { result: ChatResult; activeDay: number; setActiveDay: (day: number) => void }) {
@@ -721,98 +820,168 @@ function TripPlanningDemoView({ result, activeDay, setActiveDay }: { result: Cha
   const currentDay = view.days.find((day) => day.day === activeDay) || view.days[0];
   const cards = view.summary_cards;
 
+  const CATEGORY_ICON_MAP: Record<string, string> = {
+    attraction: "🏛️",
+    restaurant: "🍜",
+    cafe: "☕",
+    market: "🛒",
+    beach: "🏖️",
+  };
+
+  const TIME_BLOCK_COLOR: Record<string, string> = {
+    morning: "#3b82f6",
+    lunch: "#10b981",
+    afternoon: "#8b5cf6",
+    dinner: "#f97316",
+    evening: "#6366f1",
+  };
+
   return (
-    <div className="rounded-xl bg-slate-50 text-slate-950 p-4 md:p-5 space-y-4">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-black tracking-tight">{view.title}</h2>
-          {view.date_range.label && <div className="text-xs text-blue-600 font-bold mt-1">{view.date_range.label}</div>}
+    <div className="space-y-6">
+      {/* Title block */}
+      <div className="flex items-center justify-between">
+        <h2 className="font-serif-heading text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white leading-tight">
+          Plan for {view.title.replace("Plan for ", "")} next week
+        </h2>
+        <div className="rounded-full border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1 text-[10px] font-black text-emerald-600 dark:text-emerald-400 tracking-wider">
+          LIVE
         </div>
-        <div className="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black text-emerald-700">LIVE</div>
       </div>
 
-      <div className="grid grid-cols-2 xl:grid-cols-5 gap-3">
-        <TripSummaryCard label="Avg High" value={formatTemp(cards.avg_high_c)} Icon={Sun} />
-        <TripSummaryCard label="Avg Low" value={formatTemp(cards.avg_low_c)} Icon={Moon} />
-        <TripSummaryCard label="Avg Wind" value={formatNumber(cards.avg_wind_kmh, " km/h")} Icon={Wind} />
-        <TripSummaryCard label="Humidity" value={formatNumber(cards.humidity_percent, "%")} Icon={Droplets} />
-        <TripSummaryCard label="Rain Risk" value={cards.rain_risk || "n/a"} Icon={ShieldCheck} />
+      {/* Summary Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <TripSummaryCard label="Avg High" value={formatTemp(cards.avg_high_c)} Icon={Sun} colorClass="text-amber-500" />
+        <TripSummaryCard label="Avg Low" value={formatTemp(cards.avg_low_c)} Icon={Moon} colorClass="text-indigo-500" />
+        <TripSummaryCard label="Avg Wind" value={formatNumber(cards.avg_wind_kmh, " km/h")} Icon={Wind} colorClass="text-cyan-500" />
+        <TripSummaryCard label="Humidity" value={formatNumber(cards.humidity_percent, "%")} Icon={Droplets} colorClass="text-blue-500" />
+        <TripSummaryCard label="Rain Risk" value={cards.rain_risk || "n/a"} Icon={ShieldCheck} colorClass="text-emerald-500" />
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
-        <div className="text-xs font-black text-blue-600 mb-2">AI Summary</div>
-        <p className="text-sm leading-relaxed text-slate-700">{view.ai_summary}</p>
-      </div>
-
-      {view.days.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {view.days.map((day) => (
-            <button
-              key={day.day}
-              onClick={() => setActiveDay(day.day)}
-              className={`min-w-[130px] rounded-lg border px-3 py-2 text-left transition-all ${
-                currentDay?.day === day.day
-                  ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200"
-                  : "bg-white text-slate-700 border-slate-200 hover:border-blue-300"
-              }`}
-            >
-              <div className="text-xs font-black">Day {day.day}</div>
-              <div className="text-[10px] opacity-75">{day.date || day.title}</div>
-            </button>
-          ))}
+      {/* AI Summary card */}
+      <div className="rounded-2xl border border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900/60 p-5 shadow-sm">
+        <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-cyan-400 uppercase tracking-wider mb-2">
+          <Sparkles size={13} /> AI Summary
         </div>
-      )}
+        <p className="text-sm md:text-base leading-relaxed text-slate-700 dark:text-slate-300 font-semibold">
+          {view.ai_summary}
+        </p>
+      </div>
 
-      {currentDay && (
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <div className="flex items-start justify-between gap-3 flex-wrap border-b border-slate-100 pb-3">
-            <div>
-              <h3 className="text-lg font-black">{currentDay.title}</h3>
-              <p className="text-xs text-slate-600 leading-relaxed mt-1">{currentDay.summary}</p>
-            </div>
-            <div className="flex items-center gap-3 text-xs">
-              <span className="font-bold">{formatTemp(currentDay.weather.high_c)} / {formatTemp(currentDay.weather.low_c)}</span>
-              <span className="text-blue-600 font-bold">{formatPercent(currentDay.weather.rain_probability)}</span>
-            </div>
-          </div>
+      {/* 3-Day Plan details card */}
+      <div className="rounded-3xl border border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900/60 p-6 shadow-sm space-y-6">
+        <div className="flex items-center gap-2 border-b border-slate-100 dark:border-white/5 pb-3">
+          <Calendar size={14} className="text-blue-600 dark:text-cyan-400" />
+          <span className="text-sm font-black text-slate-800 dark:text-slate-200">{view.days.length}-Day Plan</span>
+        </div>
 
-          <div className="mt-4 space-y-2">
-            {currentDay.stops.map((stop) => (
-              <div key={`${stop.order}-${stop.name}`} className="grid grid-cols-[56px_1fr_auto] gap-3 items-center rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
-                <div className="text-xs font-black text-slate-700 font-mono">{stop.time}</div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black text-blue-600 uppercase tracking-wide">{blockLabel(stop.time_block)}</span>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${stop.is_indoor ? "bg-indigo-50 text-indigo-700" : "bg-cyan-50 text-cyan-700"}`}>
-                      {stop.is_indoor ? "Indoor" : "Outdoor"}
-                    </span>
+        {/* Days Selector Tabs */}
+        {view.days.length > 1 && (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {view.days.map((day) => {
+              const isActive = currentDay?.day === day.day;
+              return (
+                <button
+                  key={day.day}
+                  onClick={() => setActiveDay(day.day)}
+                  className={`flex-1 min-w-[130px] rounded-2xl border p-4 text-left transition-all duration-200 ${
+                    isActive
+                      ? "bg-blue-600 dark:bg-cyan-500 text-white dark:text-slate-950 border-blue-600 dark:border-cyan-500 shadow-lg shadow-blue-500/10 dark:shadow-cyan-500/15"
+                      : "bg-slate-50 dark:bg-white/5 text-slate-700 dark:text-slate-300 border-slate-100 dark:border-white/5 hover:border-blue-400 dark:hover:border-cyan-400"
+                  }`}
+                >
+                  <div className="text-sm font-black">Day {day.day}</div>
+                  <div className={`text-xs mt-0.5 font-semibold ${isActive ? "opacity-90" : "opacity-60"}`}>
+                    {day.date || `Day ${day.day} details`}
                   </div>
-                  <div className="text-sm font-black truncate mt-0.5">{stop.name}</div>
-                  {stop.description && <div className="text-[11px] text-slate-500 truncate">{stop.description}</div>}
-                </div>
-                <div className="text-right text-[11px] text-slate-600 min-w-[78px]">
-                  <div className="font-bold text-amber-600">{formatTemp(stop.forecast_temp_c)}</div>
-                  <div>{formatPercent(stop.rain_probability)} rain</div>
-                  <div className="capitalize">{stop.weather_suitability || "medium"}</div>
-                </div>
-              </div>
-            ))}
+                </button>
+              );
+            })}
           </div>
-        </div>
-      )}
+        )}
 
-      <PathBDebugPanel result={result} />
+        {/* Day detail stop list */}
+        {currentDay && (
+          <div className="space-y-5">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 dark:border-white/5 pb-4">
+              <div>
+                <h3 className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white">{currentDay.title}</h3>
+                <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 leading-relaxed mt-1.5 font-medium">{currentDay.summary}</p>
+              </div>
+              <div className="flex items-center gap-4 text-sm md:text-base font-extrabold text-slate-800 dark:text-slate-200 shrink-0">
+                <span className="flex items-center gap-1"><Sun size={15} className="text-amber-500" /> {formatTemp(currentDay.weather.high_c)} / {formatTemp(currentDay.weather.low_c)}</span>
+                <span className="flex items-center gap-1 text-blue-600 dark:text-cyan-400"><CloudLightning size={15} /> {formatPercent(currentDay.weather.rain_probability)} Rain Chance</span>
+              </div>
+            </div>
+
+            {/* Stop list with timeline track */}
+            <div className="relative border-l-2 border-slate-100 dark:border-white/5 ml-3 pl-6 space-y-5">
+              {currentDay.stops.map((stop) => {
+                const isIndoor = stop.is_indoor;
+                const timeCol = TIME_BLOCK_COLOR[stop.time_block] || "#94a3b8";
+                return (
+                  <div key={`${stop.order}-${stop.name}`} className="relative flex items-center justify-between gap-4 bg-slate-50 dark:bg-white/5 border border-slate-100/50 dark:border-white/5 rounded-2xl p-4 transition-all hover:bg-slate-100/30 dark:hover:bg-white/10">
+                    {/* Circle dot on the timeline track */}
+                    <div
+                      className="absolute -left-[31px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-4 border-white dark:border-slate-900 shadow-sm"
+                      style={{ backgroundColor: timeCol }}
+                    />
+                    
+                    {/* Left: Time, Icon, Details */}
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="text-base md:text-lg font-black text-slate-500 dark:text-slate-400 font-mono w-14 shrink-0">{stop.time}</div>
+                      
+                      <div className="text-xl shrink-0 p-1.5 bg-white dark:bg-slate-950 rounded-xl shadow-sm border border-slate-100 dark:border-white/5">
+                        {CATEGORY_ICON_MAP[stop.category] || "📍"}
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span style={{ color: timeCol }} className="text-xs font-black uppercase tracking-wider">{blockLabel(stop.time_block)}</span>
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isIndoor ? "bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400" : "bg-cyan-50 dark:bg-cyan-950/30 text-cyan-600 dark:text-cyan-400"}`}>
+                            {isIndoor ? "Indoor" : "Outdoor"}
+                          </span>
+                        </div>
+                        <div className="text-lg font-black text-slate-900 dark:text-white truncate mt-1">{stop.name}</div>
+                        {stop.description && <div className="text-sm md:text-base font-semibold text-slate-500 dark:text-slate-400 mt-1">{stop.description}</div>}
+                      </div>
+                    </div>
+
+                    {/* Right: Weather */}
+                    <div className="flex items-center gap-4 shrink-0">
+                      <div className="text-right text-xs">
+                        <div className="font-extrabold text-slate-900 dark:text-white flex items-center gap-1 justify-end text-base md:text-lg">
+                          <Thermometer size={14} className="text-amber-500" /> {formatTemp(stop.forecast_temp_c)}
+                        </div>
+                        <div className="text-slate-500 dark:text-slate-400 font-bold text-xs md:text-sm">{formatPercent(stop.rain_probability)} rain</div>
+                        <div className={`capitalize font-extrabold text-xs px-2.5 py-1 rounded mt-1.5 inline-block ${
+                          stop.weather_suitability === "good" ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400" :
+                          stop.weather_suitability === "poor" ? "bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400" :
+                          "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400"
+                        }`}>
+                          {stop.weather_suitability || "medium"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function TripSummaryCard({ label, value, Icon }: { label: string; value: string; Icon: any }) {
+function TripSummaryCard({ label, value, Icon, colorClass }: { label: string; value: string; Icon: any; colorClass: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3 flex items-center gap-3 min-h-[72px]">
-      <Icon size={18} className="text-blue-600 shrink-0" />
+    <div className="rounded-2xl border border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900/60 p-4 flex items-center gap-3.5 shadow-sm transition-all hover:shadow-md">
+      <div className={`p-2 rounded-xl bg-slate-50 dark:bg-white/5 shrink-0 ${colorClass}`}>
+        <Icon size={20} />
+      </div>
       <div>
-        <div className="text-lg font-black leading-none">{value}</div>
-        <div className="text-[10px] text-slate-500 mt-1">{label}</div>
+        <div className="text-xl font-extrabold text-slate-900 dark:text-white leading-none">{value}</div>
+        <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-1">{label}</div>
       </div>
     </div>
   );
@@ -828,6 +997,7 @@ export default function HomePage() {
   const [activeDay, setActiveDay] = useState(1);
   const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [showMap, setShowMap] = useState(false);
+  const [showWeather, setShowWeather] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [weatherData, setWeatherData] = useState<Record<string, CityWeather>>({
     "Hanoi": { temp: 28, condition: "Heavy rain", risk: "Moderate" },
@@ -864,7 +1034,7 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch weather data
+  // Fetch weather data with 5-minute polling interval
   useEffect(() => {
     const fetchWeather = async () => {
       try {
@@ -878,6 +1048,8 @@ export default function HomePage() {
       }
     };
     fetchWeather();
+    const interval = setInterval(fetchWeather, 300000); // 5 minutes
+    return () => clearInterval(interval);
   }, []);
 
   // Theme support
@@ -973,7 +1145,7 @@ export default function HomePage() {
 
   return (
     <div 
-      className="min-h-screen flex flex-col bg-cover bg-center bg-no-repeat transition-all duration-500 relative"
+      className={`min-h-screen ${isChatActive ? "h-screen overflow-hidden" : ""} flex flex-col bg-cover bg-center bg-no-repeat transition-all duration-500 relative`}
       style={{ 
         backgroundImage: theme === "dark" ? "url('/image_dark.png')" : "url('/image.png')"
       }}
@@ -991,37 +1163,37 @@ export default function HomePage() {
         }}
       />
 
-      {/* Content wrapper */}
       <div className="relative z-10 flex flex-col min-h-screen">
         {/* Header */}
-        <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/10 dark:bg-slate-950/20 transition-colors duration-500">
-          <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <img src="/Weatherise_Logo.png" alt="Weatherise Logo" className="w-10 h-10 rounded-xl object-cover" />
-              <h1 className="text-slate-900 dark:text-white font-serif-heading text-2xl md:text-3xl font-black tracking-tight leading-none">
-                Weatherise
-              </h1>
-            </div>
-            <div className="flex items-center gap-5">
-              <a href="/monitor" target="_blank" className="text-xs text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-cyan-400 transition-colors flex items-center gap-1.5 font-semibold">
-                <ExternalLink size={11} /> Monitor
-              </a>
-              
-              {/* Theme Toggle */}
-              <button onClick={toggleTheme} className="btn-liquid-glass p-2 rounded-xl bg-white/40 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 text-slate-800 dark:text-white" title="Toggle theme">
-                {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
-              </button>
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/10 dark:bg-slate-950/20 transition-colors duration-500">
+        <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img src="/Weatherise_Logo.png" alt="Weatherise Logo" className="w-10 h-10 rounded-xl object-cover" />
+            <h1 className="text-slate-900 dark:text-white font-serif-heading text-2xl md:text-3xl font-black tracking-tight leading-none">
+              Weatherise
+            </h1>
+          </div>
 
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white dark:bg-slate-950/60 border border-slate-100 dark:border-white/10 shadow-sm">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-700 dark:text-slate-200">Live</span>
-              </div>
+          <div className="flex items-center gap-5">
+            <a href="/monitor" target="_blank" className="text-xs text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-cyan-400 transition-colors flex items-center gap-1.5 font-semibold">
+              <ExternalLink size={11} /> Monitor
+            </a>
+            
+            {/* Theme Toggle */}
+            <button onClick={toggleTheme} className="btn-liquid-glass p-2 rounded-xl bg-white/40 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 text-slate-800 dark:text-white" title="Toggle theme">
+              {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
+
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white dark:bg-slate-950/60 border border-slate-100 dark:border-white/10 shadow-sm">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-700 dark:text-slate-200">Live</span>
             </div>
           </div>
-        </header>
+        </div>
+      </header>
 
       {/* Main Content */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-6 py-8 flex flex-col justify-center">
+      <main className={`flex-1 w-full max-w-7xl mx-auto px-6 ${isChatActive ? "py-6 min-h-0" : "py-8 justify-center"} flex flex-col`}>
         {(!loading && !latestResult) ? (
             /* INITIAL VIEW (Mockup layout matches image exactly) */
             <div className="space-y-6 animate-[fadeIn_0.4s_ease-out]">
@@ -1200,8 +1372,8 @@ export default function HomePage() {
             </div>
           ) : (
           /* ACTIVE / CHAT VIEW — V3: Left Output Canvas | Right Composer + Small Map */
-          <div className="animate-[fadeIn_0.3s_ease] flex flex-col h-[calc(100vh-140px)]">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
+          <div className="animate-[fadeIn_0.3s_ease] flex flex-col flex-1 min-h-0">
+            <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6 flex-1 min-h-0">
 
               {/* ── LEFT: Large Output Canvas ─────────────────────── */}
               {(() => {
@@ -1223,310 +1395,307 @@ export default function HomePage() {
                   ? "radial-gradient(ellipse at 50% 0%, rgba(245, 158, 11, 0.06) 0%, var(--bg-secondary) 80%)"
                   : "radial-gradient(ellipse at 50% 0%, rgba(34, 211, 238, 0.04) 0%, var(--bg-secondary) 80%)";
 
+                const isTripPlan = latestResult && latestResult.response_type === "trip_planning" && latestResult.trip_view;
+
+                if (isTripPlan) {
+                  return (
+                    <div className="overflow-y-auto flex flex-col gap-6 min-h-0 pr-1 pb-4">
+                      {loading && (
+                        <div className="py-8 text-center space-y-4 bg-[var(--bg-secondary)] border border-[var(--color-border)] rounded-3xl p-6 shadow-2xl">
+                          <Loader2 size={24} className="animate-spin text-[var(--color-brand)] mx-auto" />
+                          <p className="text-xs text-[var(--color-text-secondary)]">Analyzing input & evaluating risk factors...</p>
+                          <StepIndicator steps={steps} />
+                        </div>
+                      )}
+                      {!loading && latestResult && (
+                        <TripPlanningDemoView result={latestResult} activeDay={activeDay} setActiveDay={setActiveDay} />
+                      )}
+                    </div>
+                  );
+                }
+
                 return (
                   <div 
                     style={{ border: `1px solid ${dynamicBorder}`, background: dynamicBg }}
                     className="rounded-3xl p-6 shadow-2xl overflow-y-auto flex flex-col gap-5 min-h-0"
                   >
 
-                    {/* Header */}
-                    <div className="flex items-center justify-between border-b border-[var(--color-border-subtle)] pb-4 flex-shrink-0">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "var(--color-brand-gradient)" }}>
-                          <CloudLightning size={13} className="text-white" />
-                        </div>
-                        <div>
-                          <h3 className="text-xs font-bold leading-none">Weatherise</h3>
-                          <p className="text-[9px] text-[var(--color-text-muted)] mt-0.5">Weather Risk Intelligence</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950/30 border border-emerald-900/40 text-[9px] text-emerald-400">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        Live
-                      </div>
-                    </div>
-
-                {/* Loading */}
-                {loading && (
-                  <div className="py-8 text-center space-y-4">
-                    <Loader2 size={24} className="animate-spin text-[var(--color-brand)] mx-auto" />
-                    <p className="text-xs text-[var(--color-text-secondary)]">Analyzing input & evaluating risk factors...</p>
-                    <StepIndicator steps={steps} />
-                  </div>
-                )}
-
-                {/* Result */}
-                {latestResult && (
-                  <div className="space-y-5">
-                    {/* Badges */}
-                    <div className="flex items-center justify-between flex-wrap gap-2 text-[10px] text-[var(--color-text-muted)]">
-                      <div className="flex items-center gap-2">
-                        {latestResult.domain && (
-                          <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[var(--bg-tertiary)] border border-[var(--color-border-subtle)] text-[var(--color-brand)]">
-                            {DOMAIN_ICONS[latestResult.domain] ?? "🌐"} {latestResult.domain}
-                          </span>
-                        )}
-                        {latestResult.location && (
-                          <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[var(--bg-tertiary)] border border-[var(--color-border-subtle)]">
-                            <MapPin size={10} /> {latestResult.location}
-                          </span>
-                        )}
-                      </div>
-                      <span className="font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider"
-                        style={{
-                          color: riskColor(displayRisk),
-                          background: riskBg(displayRisk),
-                        }}>
-                        {displayRisk}
-                      </span>
-                    </div>
-
-                    {latestResult.response_type === "weather_prediction" && latestResult.weather_view ? (
-                      <WeatherPredictionDemoView result={latestResult} />
-                    ) : latestResult.response_type === "trip_planning" && latestResult.trip_view ? (
-                      <TripPlanningDemoView result={latestResult} activeDay={activeDay} setActiveDay={setActiveDay} />
-                    ) : (
-                      <>
-                    {/* Heading */}
-                    {latestResult.location && (
-                      <h3 className="text-xl font-bold leading-snug text-[var(--color-text-primary)]">
-                        {latestResult.location} will likely experience{" "}
-                        {latestResult.risk_assessment?.rain_risk?.toLowerCase() === "high"
-                          ? "heavy rain"
-                          : "some weather conditions"}{" "}
-                        {latestResult.time_range?.raw_text ? latestResult.time_range.raw_text.toLowerCase() : "during this period"}.
-                      </h3>
-                    )}
-
-                    {/* Final answer */}
-                    {latestResult.final_answer && (
-                      <p className="text-sm text-[var(--color-text-card-secondary)] leading-relaxed">
-                        {latestResult.final_answer}
-                      </p>
-                    )}
-
-                    {/* Risk Cards */}
-                    {latestResult.risk_assessment && (
-                      <div className="flex gap-3">
-                        <RiskBadge 
-                          label="Rain" 
-                          value={latestResult.risk_assessment.rain_risk ?? "unknown"} 
-                          Icon={Droplets} 
-                          detail={latestResult.weather_stats?.max_rain_prob !== undefined ? `${latestResult.weather_stats.max_rain_prob}%` : undefined}
-                        />
-                        <RiskBadge 
-                          label="Wind" 
-                          value={latestResult.risk_assessment.wind_risk ?? "unknown"} 
-                          Icon={Wind} 
-                          detail={latestResult.weather_stats?.max_wind_speed !== undefined ? `${latestResult.weather_stats.max_wind_speed} km/h` : undefined}
-                        />
-                        <RiskBadge 
-                          label="Heat" 
-                          value={latestResult.risk_assessment.heat_risk ?? "unknown"} 
-                          Icon={Thermometer} 
-                          detail={latestResult.weather_stats?.max_temp !== undefined ? `${latestResult.weather_stats.max_temp}°C` : undefined}
-                        />
+                    {/* Loading */}
+                    {loading && (
+                      <div className="py-8 text-center space-y-4">
+                        <Loader2 size={24} className="animate-spin text-[var(--color-brand)] mx-auto" />
+                        <p className="text-xs text-[var(--color-text-secondary)]">Analyzing input & evaluating risk factors...</p>
+                        <StepIndicator steps={steps} />
                       </div>
                     )}
 
-                    <PathBDebugPanel result={latestResult} />
-
-                    {/* Forecast */}
-                    {latestResult.prediction && (
-                      <div className="flex gap-3 p-3.5 rounded-xl border" style={{ background: "var(--box-cyan-bg)", borderColor: "var(--box-cyan-border)" }}>
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-cyan-950/20 text-[var(--box-cyan-label)] border border-[var(--box-cyan-border)]">
-                          <Calendar size={14} />
-                        </div>
-                        <div className="text-xs flex-1">
-                          <div className="font-bold flex items-center justify-between" style={{ color: "var(--box-cyan-label)" }}>
-                            <span>Forecast</span>
-                            {latestResult.time_range?.start && latestResult.time_range?.end && (
-                              <span className="text-[9px] font-medium px-2 py-0.5 rounded bg-cyan-950/40 text-cyan-300">
-                                Forecast: {latestResult.time_range.start} to {latestResult.time_range.end}
+                    {/* Result */}
+                    {!loading && latestResult && (
+                      <div className="space-y-5">
+                        {/* Badges */}
+                        <div className="flex items-center justify-between flex-wrap gap-2 text-[10px] text-[var(--color-text-muted)]">
+                          <div className="flex items-center gap-2">
+                            {latestResult.domain && (
+                              <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[var(--bg-tertiary)] border border-[var(--color-border-subtle)] text-[var(--color-brand)]">
+                                {DOMAIN_ICONS[latestResult.domain] ?? "🌐"} {latestResult.domain}
+                              </span>
+                            )}
+                            {latestResult.location && (
+                              <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[var(--bg-tertiary)] border border-[var(--color-border-subtle)]">
+                                <MapPin size={10} /> {latestResult.location}
                               </span>
                             )}
                           </div>
-                          <p className="mt-1 leading-relaxed" style={{ color: "var(--box-cyan-text)" }}>{latestResult.prediction}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Recommendation */}
-                    {latestResult.recommendation && (
-                      <div className="flex gap-3 p-3.5 rounded-xl border" style={{ background: "var(--box-emerald-bg)", borderColor: "var(--box-emerald-border)" }}>
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-emerald-950/20 text-[var(--box-emerald-label)] border border-[var(--box-emerald-border)]">
-                          <CheckCircle2 size={14} />
-                        </div>
-                        <div className="text-xs">
-                          <div className="font-bold" style={{ color: "var(--box-emerald-label)" }}>Recommendation</div>
-                          <p className="mt-1 leading-relaxed" style={{ color: "var(--box-emerald-text)" }}>{latestResult.recommendation}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Trip Plan Cards */}
-                    {latestResult.trip_plan && (
-                      <div className="space-y-3 pt-2 border-t border-[var(--color-border-subtle)]">
-                        <div className="flex items-center justify-between gap-2 text-xs font-bold text-[var(--color-text-primary)]">
-                          <div className="flex items-center gap-2">
-                            <Calendar size={12} className="text-[var(--color-brand)]" />
-                            {latestResult.trip_plan.duration_days}-Day Trip Plan · {latestResult.trip_plan.location}
-                          </div>
-                          {latestResult.trip_plan.weather_aware && (
-                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-950/30 text-cyan-400 border border-cyan-900/40">
-                              ⛅ Weather-Optimised
-                            </span>
-                          )}
+                          <span className="font-bold px-2 py-0.5 rounded-md text-[9px] uppercase tracking-wider"
+                            style={{
+                              color: riskColor(displayRisk),
+                              background: riskBg(displayRisk),
+                            }}>
+                            {displayRisk}
+                          </span>
                         </div>
 
-                        {/* Day Tabs */}
-                        {latestResult.trip_plan.days.length > 1 && (
-                          <div className="flex gap-1.5 border-b border-[var(--color-border-subtle)] pb-2 mb-1">
-                            {latestResult.trip_plan.days.map((d) => (
-                              <button
-                                key={d.day}
-                                onClick={() => setActiveDay(d.day)}
-                                className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all duration-200 ${
-                                  activeDay === d.day
-                                    ? "bg-cyan-500 text-slate-900 shadow-lg shadow-cyan-500/25"
-                                    : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
-                                }`}
-                              >
-                                Day {d.day}
-                              </button>
-                            ))}
+                        {latestResult.weather_view ? (
+                          <WeatherPredictionDemoView result={latestResult} />
+                        ) : latestResult.response_type === "trip_planning" && latestResult.trip_view ? (
+                          <TripPlanningDemoView result={latestResult} activeDay={activeDay} setActiveDay={setActiveDay} />
+                        ) : (
+                          <>
+                        {/* Heading */}
+                        {latestResult.location && (
+                          <h3 className="text-xl font-bold leading-snug text-[var(--color-text-primary)]">
+                            {latestResult.location} will likely experience{" "}
+                            {latestResult.risk_assessment?.rain_risk?.toLowerCase() === "high"
+                              ? "heavy rain"
+                              : "some weather conditions"}{" "}
+                            {latestResult.time_range?.raw_text ? latestResult.time_range.raw_text.toLowerCase() : "during this period"}.
+                          </h3>
+                        )}
+
+                        {/* Final answer */}
+                        {latestResult.final_answer && (
+                          <p className="text-sm text-[var(--color-text-card-secondary)] leading-relaxed">
+                            {latestResult.final_answer}
+                          </p>
+                        )}
+
+                        {/* Risk Cards */}
+                        {latestResult.risk_assessment && (
+                          <div className="flex gap-3">
+                            <RiskBadge 
+                              label="Rain" 
+                              value={latestResult.risk_assessment.rain_risk ?? "unknown"} 
+                              Icon={Droplets} 
+                              detail={latestResult.weather_stats?.max_rain_prob !== undefined ? `${latestResult.weather_stats.max_rain_prob}%` : undefined}
+                            />
+                            <RiskBadge 
+                              label="Wind" 
+                              value={latestResult.risk_assessment.wind_risk ?? "unknown"} 
+                              Icon={Wind} 
+                              detail={latestResult.weather_stats?.max_wind_speed !== undefined ? `${latestResult.weather_stats.max_wind_speed} km/h` : undefined}
+                            />
+                            <RiskBadge 
+                              label="Heat" 
+                              value={latestResult.risk_assessment.heat_risk ?? "unknown"} 
+                              Icon={Thermometer} 
+                              detail={latestResult.weather_stats?.max_temp !== undefined ? `${latestResult.weather_stats.max_temp}°C` : undefined}
+                            />
                           </div>
                         )}
 
-                        {latestResult.trip_plan.days
-                          .filter((d) => d.day === activeDay)
-                          .map((day) => (
-                            <div key={day.day} className="rounded-xl border border-[var(--color-border-subtle)] bg-[var(--bg-primary)] p-3 space-y-2 animate-[fadeIn_0.25s_ease]">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <span className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 text-[10px] font-black flex items-center justify-center flex-shrink-0">{day.day}</span>
-                                  <span className="text-[10px] font-bold text-[var(--color-text-primary)]">{day.theme || `Day ${day.day}`}</span>
-                                  {day.primary_area && <span className="text-[9px] text-[var(--color-text-muted)]">· {day.primary_area}</span>}
-                                </div>
-                                {(day.date || day.weather_condition) && (
-                                  <span className="text-[9px] font-medium px-2 py-0.5 rounded bg-white/5 text-slate-300">
-                                    {day.date && `${day.date}`} {day.weather_condition && `· ${day.weather_condition}`}
+                        <PathBDebugPanel result={latestResult} />
+
+                        {/* Forecast */}
+                        {latestResult.prediction && (
+                          <div className="flex gap-3 p-3.5 rounded-xl border" style={{ background: "var(--box-cyan-bg)", borderColor: "var(--box-cyan-border)" }}>
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-cyan-950/20 text-[var(--box-cyan-label)] border border-[var(--box-cyan-border)]">
+                              <Calendar size={14} />
+                            </div>
+                            <div className="text-xs flex-1">
+                              <div className="font-bold flex items-center justify-between" style={{ color: "var(--box-cyan-label)" }}>
+                                <span>Forecast</span>
+                                {latestResult.time_range?.start && latestResult.time_range?.end && (
+                                  <span className="text-[9px] font-medium px-2 py-0.5 rounded bg-cyan-950/40 text-cyan-300">
+                                    Forecast: {latestResult.time_range.start} to {latestResult.time_range.end}
                                   </span>
                                 )}
                               </div>
-                              <div className="space-y-1.5">
-                                {day.stops.map((stop) => {
-                                  const blockColor: Record<string, string> = {
-                                    morning: "#22d3ee", lunch: "#f59e0b",
-                                    afternoon: "#818cf8", dinner: "#f97316", evening: "#a78bfa",
-                                  };
-                                  const col = blockColor[stop.time_block] || "#94a3b8";
-                                  const catIcon: Record<string, string> = { restaurant: "🍜", beach: "🏖️", cafe: "☕", market: "🛒" };
-                                  return (
-                                    <div key={stop.place_id} className="flex items-center gap-2 text-[10px] px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors">
-                                      <span style={{ color: col }} className="font-bold w-10 shrink-0 font-mono">{stop.planned_time}</span>
-                                      <span className="text-[9px] shrink-0">{catIcon[stop.category] || "📍"}</span>
-                                      <span className="text-[var(--color-text-secondary)] truncate flex-1">{stop.name}</span>
-                                      {stop.weather_condition && (
-                                        <span className="text-[9px] text-slate-400 max-w-[80px] truncate shrink-0">{stop.weather_condition}</span>
-                                      )}
-                                      <span className="text-[9px] shrink-0 px-1.5 py-0.5 rounded-full" style={{
-                                        background: stop.is_indoor ? "rgba(129,140,248,0.15)" : "rgba(34,211,238,0.12)",
-                                        color: stop.is_indoor ? "#818cf8" : "#22d3ee",
-                                      }}>
-                                        {stop.is_indoor ? "🏠" : "🌤"}
-                                      </span>
-                                      {stop.forecast_temp != null && (
-                                        <span className="text-amber-400 text-[9px] shrink-0">🌡{stop.forecast_temp}°C</span>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
+                              <p className="mt-1 leading-relaxed" style={{ color: "var(--box-cyan-text)" }}>{latestResult.prediction}</p>
                             </div>
-                          ))}
-                      </div>
-                    )}
+                          </div>
+                        )}
 
-                    {/* Explanation */}
-                    {latestResult.explanation && (
-                      <p className="text-[10px] text-[var(--color-text-card-muted)] italic leading-relaxed pt-2 border-t border-[var(--color-border-subtle)]">
-                        {latestResult.explanation}
-                      </p>
-                    )}
+                        {/* Recommendation */}
+                        {latestResult.recommendation && (
+                          <div className="flex gap-3 p-3.5 rounded-xl border" style={{ background: "var(--box-emerald-bg)", borderColor: "var(--box-emerald-border)" }}>
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-emerald-950/20 text-[var(--box-emerald-label)] border border-[var(--box-emerald-border)]">
+                              <CheckCircle2 size={14} />
+                            </div>
+                            <div className="text-xs">
+                              <div className="font-bold" style={{ color: "var(--box-emerald-label)" }}>Recommendation</div>
+                              <p className="mt-1 leading-relaxed" style={{ color: "var(--box-emerald-text)" }}>{latestResult.recommendation}</p>
+                            </div>
+                          </div>
+                        )}
 
-                    {/* Error */}
-                    {latestResult.error && (
-                      <div className="flex items-center gap-2 text-xs text-red-400 bg-red-950/20 border border-red-900/30 rounded-xl p-3.5">
-                        <AlertTriangle size={14} /> {latestResult.error}
+                        {/* Trip Plan Cards */}
+                        {latestResult.trip_plan && (
+                          <div className="space-y-3 pt-2 border-t border-[var(--color-border-subtle)]">
+                            <div className="flex items-center justify-between gap-2 text-xs font-bold text-[var(--color-text-primary)]">
+                              <div className="flex items-center gap-2">
+                                <Calendar size={12} className="text-[var(--color-brand)]" />
+                                {latestResult.trip_plan.duration_days}-Day Trip Plan · {latestResult.trip_plan.location}
+                              </div>
+                              {latestResult.trip_plan.weather_aware && (
+                                <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-950/30 text-cyan-400 border border-cyan-900/40">
+                                  ⛅ Weather-Optimised
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Day Tabs */}
+                            {latestResult.trip_plan.days.length > 1 && (
+                              <div className="flex gap-1.5 border-b border-[var(--color-border-subtle)] pb-2 mb-1">
+                                {latestResult.trip_plan.days.map((d) => (
+                                  <button
+                                    key={d.day}
+                                    onClick={() => setActiveDay(d.day)}
+                                    className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all duration-200 ${
+                                      activeDay === d.day
+                                        ? "bg-cyan-500 text-slate-900 shadow-lg shadow-cyan-500/25"
+                                        : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
+                                    }`}
+                                  >
+                                    Day {d.day}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+
+                            {latestResult.trip_plan.days
+                              .filter((d) => d.day === activeDay)
+                              .map((day) => (
+                                <div key={day.day} className="rounded-xl border border-[var(--color-border-subtle)] bg-[var(--bg-primary)] p-3 space-y-2 animate-[fadeIn_0.25s_ease]">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <span className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 text-[10px] font-black flex items-center justify-center flex-shrink-0">{day.day}</span>
+                                      <span className="text-[10px] font-bold text-[var(--color-text-primary)]">{day.theme || `Day ${day.day}`}</span>
+                                      {day.primary_area && <span className="text-[9px] text-[var(--color-text-muted)]">· {day.primary_area}</span>}
+                                    </div>
+                                    {(day.date || day.weather_condition) && (
+                                      <span className="text-[9px] font-medium px-2 py-0.5 rounded bg-white/5 text-slate-300">
+                                        {day.date && `${day.date}`} {day.weather_condition && `· ${day.weather_condition}`}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    {day.stops.map((stop) => {
+                                      const blockColor: Record<string, string> = {
+                                        morning: "#22d3ee", lunch: "#f59e0b",
+                                        afternoon: "#818cf8", dinner: "#f97316", evening: "#a78bfa",
+                                      };
+                                      const col = blockColor[stop.time_block] || "#94a3b8";
+                                      const catIcon: Record<string, string> = { restaurant: "🍜", beach: "🏖️", cafe: "☕", market: "🛒" };
+                                      return (
+                                        <div key={stop.place_id} className="flex items-center gap-2 text-[10px] px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors">
+                                          <span style={{ color: col }} className="font-bold w-10 shrink-0 font-mono">{stop.planned_time}</span>
+                                          <span className="text-[9px] shrink-0">{catIcon[stop.category] || "📍"}</span>
+                                          <span className="text-[var(--color-text-secondary)] truncate flex-1">{stop.name}</span>
+                                          {stop.weather_condition && (
+                                            <span className="text-[9px] text-slate-400 max-w-[80px] truncate shrink-0">{stop.weather_condition}</span>
+                                          )}
+                                          <span className="text-[9px] shrink-0 px-1.5 py-0.5 rounded-full" style={{
+                                            background: stop.is_indoor ? "rgba(129,140,248,0.15)" : "rgba(34,211,238,0.12)",
+                                            color: stop.is_indoor ? "#818cf8" : "#22d3ee",
+                                          }}>
+                                            {stop.is_indoor ? "🏠" : "🌤"}
+                                          </span>
+                                          {stop.forecast_temp != null && (
+                                            <span className="text-amber-400 text-[9px] shrink-0">🌡{stop.forecast_temp}°C</span>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        )}
+
+                        {/* Explanation */}
+                        {latestResult.explanation && (
+                          <p className="text-[10px] text-[var(--color-text-card-muted)] italic leading-relaxed pt-2 border-t border-[var(--color-border-subtle)]">
+                            {latestResult.explanation}
+                          </p>
+                        )}
+
+                        {/* Error */}
+                        {latestResult.error && (
+                          <div className="flex items-center gap-2 text-xs text-red-400 bg-red-950/20 border border-red-900/30 rounded-xl p-3.5">
+                            <AlertTriangle size={14} /> {latestResult.error}
+                          </div>
+                        )}
+                          </>
+                        )}
                       </div>
-                    )}
-                      </>
                     )}
                   </div>
-                )}
-              </div>
-            );
-          })()}
+                );
+              })()}
 
               {/* ── RIGHT: Composer (top) + Small Map (bottom ¼) ─── */}
               <div className="flex flex-col gap-6 min-h-0">
 
-                {/* Query Composer */}
+                {/* Query Composer - Ask Weatherise style */}
                 <div className="flex-shrink-0 rounded-3xl border border-[var(--color-border)] bg-[var(--bg-secondary)] p-6 shadow-2xl space-y-4 min-h-0">
-                  <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-brand)]">What would you like to know?</h3>
-                    <p className="text-[10px] text-[var(--color-text-muted)] mt-1">Get intelligent weather risk insights for your plans.</p>
+                  <div className="flex items-center gap-2">
+                    <Search size={15} className="text-[var(--color-brand)]" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-brand)]">Ask Weatherise</h3>
                   </div>
-                  <div className="relative rounded-xl border border-[var(--color-border)] bg-[var(--bg-primary)] p-3 focus-within:border-[var(--color-brand)] transition-colors">
-                    <textarea
-                      rows={4}
+                  
+                  <div className="relative flex items-center bg-[var(--bg-primary)] border border-[var(--color-border)] rounded-full px-4 py-2.5 focus-within:border-[var(--color-brand)] focus-within:ring-2 focus-within:ring-[var(--color-brand)]/20 transition-all">
+                    <input
+                      type="text"
                       value={input}
                       onChange={e => setInput(e.target.value)}
-                      onKeyDown={handleKey}
-                      placeholder="e.g. Plan a 3-day trip to Da Nang next week..."
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && input.trim()) {
+                          sendMessage(input);
+                        }
+                      }}
+                      placeholder="Ask anything about your plan..."
                       disabled={loading}
-                      maxLength={300}
-                      className="w-full bg-transparent text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] resize-none outline-none leading-relaxed"
+                      className="w-full bg-transparent text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] outline-none pr-10"
                     />
-                    <div className="text-[10px] text-[var(--color-text-muted)] text-right mt-1">{input.length} / 300</div>
-                  </div>
-                  <div className="flex justify-end">
-                    <button onClick={() => sendMessage(input)} disabled={!input.trim() || loading}
-                      className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-xs text-white bg-[var(--color-brand)] hover:scale-[1.02] disabled:opacity-40 transition-all shadow-md">
-                      <Sparkles size={12} /> Generate
+                    <button
+                      onClick={() => sendMessage(input)}
+                      disabled={!input.trim() || loading}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 disabled:opacity-40 transition-colors shadow-md"
+                    >
+                      <ArrowRight size={14} />
                     </button>
                   </div>
-                  <div className="pt-1 text-center text-[10px] text-[var(--color-text-muted)] border-t border-[var(--color-border-subtle)] pt-3">Weatherise AI • Powered by NVIDIA NIM</div>
+
                 </div>
 
                 {/* Small Map — expands to fill remaining space */}
                 <div className="flex-1 rounded-3xl border border-[var(--color-border)] bg-[var(--bg-secondary)] shadow-2xl overflow-hidden flex flex-col min-h-0">
-                  <div className="flex items-center gap-2 px-5 py-3 border-b border-white/10 bg-slate-900/40 flex-shrink-0">
-                    <Map size={13} className="text-cyan-400" />
-                    <span className="text-xs font-bold text-slate-200">
-                      {latestResult?.trip_plan
-                        ? `Trip Map · ${latestResult.trip_plan.location}`
-                        : latestResult?.weather_view
-                          ? `${latestResult.weather_view.location.name} on Map`
-                          : latestResult?.location ? `Location · ${latestResult.location}` : "Map"}
-                    </span>
-                    {latestResult?.trip_plan && (
-                      <span className="ml-auto text-xs text-slate-500 font-semibold">
-                        {latestResult.trip_plan.duration_days} days
-                      </span>
-                    )}
+                  <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-slate-900/40 flex-shrink-0">
+                    <div className="flex items-center gap-2">
+                      <Map size={13} className="text-cyan-400" />
+                      <span className="text-xs font-bold text-slate-200">Map & Places</span>
+                    </div>
                   </div>
                   <div className="flex-1 min-h-0 w-full relative">
                     <TripMapPanel 
-                      tripPlan={latestResult?.trip_plan} 
-                      coordinates={latestResult?.weather_view?.map?.center
+                      tripPlan={latestResult?.trip_plan ?? convertTripViewToPlan(latestResult?.trip_view)} 
+                      coordinates={(latestResult?.trip_view?.map as any)?.center
                         ? {
-                            latitude: latestResult.weather_view.map.center.latitude,
-                            longitude: latestResult.weather_view.map.center.longitude,
+                            latitude: (latestResult?.trip_view?.map as any)?.center?.latitude,
+                            longitude: (latestResult?.trip_view?.map as any)?.center?.longitude,
                           }
                         : latestResult?.coordinates}
-                      locationName={latestResult?.weather_view?.location?.name ?? latestResult?.location}
+                      locationName={latestResult?.trip_view?.title ?? latestResult?.location}
                       weatherMarker={latestResult?.weather_view?.map?.markers?.[0] ?? null}
                       activeDay={activeDay}
                     />
