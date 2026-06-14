@@ -1,180 +1,195 @@
-# 🌦️ Weatherise — Multi-Agent System for Travel Optimization in Da Nang City
+# 🌦️ Weatherise — Multi-Agent System for Multi-Domain Optimization in Da Nang City
 
-> **Team:** Weatherise (4 members) 
-> **Hackathon:** Vietnam AI Open Hackathon 2026
+> **Team:** Weatherise (4 members)  
+> **Role:** Developed under the direction of **Team Lead**  
+> **Platform:** Responsive Web Application (PWA) & Agentic Backend  
+> **Infrastructure:** Optimized for **8x NVIDIA H200 GPU Cluster** with **NVIDIA NeMo Agent Toolkit** integration.
 
 ---
 
 ## 📋 Table of Contents
-
-1. [Project Overview](#-project-overview)
-2. [Why This Matters Now](#-why-this-matters-now)
-3. [Platform Strategy](#-platform-strategy)
-4. [System Architecture](#-system-architecture)
-5. [Future Reuse & Enterprise Value](#-future-reuse--enterprise-value)
-
----
-
-## 🎯 Project Overview
-
-**Weatherise** is a **domain-agnostic Multi-Agent System (MAS)** that combines real-time weather intelligence with optimization algorithms to deliver hyper-personalized travel recommendations for Da Nang City. The system orchestrates specialized AI agents — each powered by GPU-accelerated models running on an 8× H200 cluster — to reason about weather forecasts, tourist attractions, route optimization, and local expertise simultaneously.
-
-### Core Idea
-
-```
-User Query → Orchestrator Agent → [Weather Agent + Attraction Agent + Route Agent + Local Expert Agent] → Optimized Travel Plan
-                                                          ↕ (real-time loop)
-                                          Weather Watcher Agent → SMS / WebSocket Alert → Dynamic Re-plan
-```
-
-The architecture is built as a **reusable multi-agent framework** — swap the domain knowledge (travel → agriculture, logistics, disaster response) and the same agent orchestration, RAG pipeline, and optimization layer works across industries.
-
-### Focus Areas
-
-| Area | Description |
-|------|-------------|
-| 🌤️ **Weather** | 15-day forecasts via NVIDIA Earth-2 Atlas (Medium Range) through Earth2Studio + Open-Meteo (hourly detail) + OpenWeatherMap (current conditions) |
-| ✈️ **Travel** | Personalized attraction recommendations with crowd-awareness |
-| ⚡ **Optimization** | GPU-accelerated route optimization via NVIDIA cuOpt |
-| 🔔 **Real-Time Alerts** | Proactive weather monitoring → SMS/WebSocket notification → auto re-plan outdoor activities |
-| 📸 **Plan Export** | Save itinerary as beautiful image + QR code for offline access |
-| 🔄 **Reusability** | Domain-agnostic MAS framework applicable to agriculture, logistics, etc. |
-
-### Trip Duration
-
-| Setting | Value | Reason |
-|---------|-------|--------|
-| Minimum | 1 day | Half-day/day trip |
-| Default | 2-3 days | Most common Da Nang trip |
-| **Recommended max** | **7 days** | Forecast accuracy high, itinerary quality optimal |
-| Hard limit | 15 days | Earth-2 Atlas (Medium Range) forecast boundary |
+1. [Project Overview](#1-project-overview)
+2. [Development Team](#2-development-team)
+3. [Core Features](#3-core-features)
+4. [System Architecture](#4-system-architecture)
+5. [Tech Stack](#5-tech-stack)
+6. [Deployment Guide](#6-deployment-guide)
+7. [Database Seeding](#7-database-seeding)
 
 ---
 
-## 🔥 Why This Matters Now
+## 1. Project Overview
 
-### Da Nang Tourism is Booming
+**Weatherise** is a **domain-aware Multi-Agent System (MAS)** that integrates real-time weather intelligence and physical risk models to deliver optimal decision-making and planning. 
 
-- **2025:** 17.3M visitors (+15% YoY), VND 60 trillion revenue (+21%)
-- **2026 target:** 19.5M visitors — first 5 months already at 7.74M (+20.9%)
-- Da Nang named **Vietnam's Smart City for 6 consecutive years**
-- City already deploying AI chatbots, AR experiences, and the "Danang Smart City" super-app
-
-> **The problem:** Tourists still manually check weather, browse blogs, and guess which attractions to visit. There is no intelligent system that combines weather awareness with real-time travel optimization.
-
-### Why Multi-Agent Systems?
-
-| Fact | Source |
-|------|--------|
-| MAS market projected to reach $47.4B by 2030 (CAGR 45.8%) | MarketsandMarkets, 2025 |
-| NVIDIA launched "Multi-Agent Intelligent Warehouse" blueprint at GTC 2026 | NVIDIA GTC 2026 |
-| NeMo Agent Toolkit now supports framework-agnostic orchestration (LangChain, CrewAI, etc.) | NVIDIA, 2025 |
-| EU Green Deal driving AI-powered agricultural optimization adoption | European Commission |
-| 73% of enterprises plan to deploy agentic AI by 2027 | Gartner, 2025 |
-
-### Why Weather × Travel?
-
-- Weather is the **#1 factor** affecting tourist satisfaction (World Tourism Organization, UNWTO)
-- 68% of travelers change plans due to unexpected weather (Booking.com Travel Report 2025)
-- Climate volatility increasing — Da Nang faces typhoon season (Sep-Dec), extreme heat (Jun-Aug)
+The platform is architected as a **reusable domain-agnostic framework**. By adapting the Knowledge Base and risk rule engine, it seamlessly transitions across diverse sectors:
+* **Smart Tourism:** Formulates optimized daily itineraries based on personal preferences, real-time crowding data, and weather forecasts.
+* **Urban Construction:** Evaluates physical weather hazards (rain, temperature, wind gusts) for concrete pouring, high-altitude crane operations, and heavy lifting.
+* **Precision Agriculture:** Prescribes irrigation, fertilization, and harvesting windows based on soil moisture levels and short/medium-range forecasts.
 
 ---
 
-## 📱 Platform Strategy
+## 2. Development Team
 
-### Recommended: **Web Application (Responsive PWA)** — NOT native mobile
+Developed by **Team Weatherise** under a professional team structure:
 
-For a 5-day hackathon with 4 members, here's the optimal strategy:
+* **Team Lead:**
+  * Defines strategic vision, drafts system architecture, and models the multi-agent workflows.
+  * Directs task distribution, manages integration schedules, and validates operational readiness.
+  * Architected the RAG matching pipeline and NVIDIA NIM integration.
+* **Backend & Agents Engineers (2 members):**
+  * Built the core LangGraph state machine and implemented individual context agents (Tourism, Construction, Agriculture).
+  * Built the MCP Server for dynamic external tool integrations and storage connections (PostgreSQL, Qdrant, Redis).
+* **Frontend Engineer (1 member):**
+  * Developed the Next.js 14 responsive PWA, integrating interactive Leaflet maps and Recharts weather visualizations.
 
-```
-Day 1-3 (MVP):     Backend MAS + Gradio/Streamlit Chat UI
-Day 4-5 (Polish):  Next.js Responsive PWA with map integration
-```
+---
 
-### Why This Approach?
+## 3. Core Features
 
-| Option | Build Time | Judge Experience | Recommendation |
-|--------|-----------|-----------------|----------------|
-| Native Mobile (React Native) | 3-4 days just for app | Can't test easily | ❌ Too risky |
-| Backend-only system | 2-3 days | No visual demo | ❌ Not impressive |
-| **Streamlit/Gradio → PWA** | **1 day UI + 2 days agents** | **Interactive demo** | **✅ Best ROI** |
+* 🔮 **Natural Language Parsing:** Leverages LLM Parser NIM to translate unstructured prompts into schema-validated search objects (intent, time, location, constraints).
+* 🚦 **Intelligent Orchestration:** Utilizes **LangGraph** to model state-driven agent navigation, routing user requests dynamically to domain-specific context agents.
+* 🌐 **Model Context Protocol (MCP):** Connects agents to external API resources via a unified MCP gateway, fetching live coordinates, weather forecasts, and attraction databases.
+* 🧠 **Dual-Layer Risk Evaluation:** Combines a deterministic rule-based prediction engine (for hard safety boundaries) with NIM LLMs (for soft personalized logic).
+* 🚨 **Weather Watcher & Auto-Replanning:** Runs background tasks to monitor forecast updates, pushing SMS alerts via SpeedSMS and triggering automatic route re-planning upon hazardous weather detections.
+* 🖨️ **Visual Export:** Generates high-quality offline itinerary cards complete with embedded QR codes.
 
-### Platform Architecture
+---
+
+## 4. System Architecture
+
+### 📊 Architecture Block Diagram
+
+The system comprises containerized microservices routed through an Nginx reverse proxy:
+
+![System Architecture](./docs/system_architecture.jpg)
+
+---
+
+### 🔄 Runtime Execution Flow
+
+The sequence below illustrates the end-to-end data lifecycle:
 
 ```mermaid
-graph LR
-    subgraph "Phase 1: MVP (Day 1-3)"
-        A[Gradio Chat UI] --> B[FastAPI Backend]
-        B --> C[Multi-Agent System]
-    end
-    subgraph "Phase 2: Polish (Day 4-5)"
-        D[Next.js PWA] --> B
-        D --> E[Leaflet Map]
-        D --> F[Weather Dashboard]
-    end
-    style A fill:#4CAF50,color:#fff
-    style D fill:#2196F3,color:#fff
+graph TD
+    A[User Input / Web UI] -->|Raw Text| B[LLM Parser Agent]
+    B -->|Structured Initial JSON| C[Orchestrator Agent]
+    
+    C -->|Route based on Domain| D{Context Agent Layer}
+    D -->|Tourism| E[Tourism Context Agent]
+    D -->|Construction| F[Construction Context Agent]
+    D -->|Agriculture| G[Agriculture Context Agent]
+    
+    E & F & G -->|Query| H[(Knowledge Base)]
+    E & F & G -->|Call tools for missing data| I[MCP Server]
+    
+    I -->|Location Geocoding| J[location.resolveCoordinates]
+    I -->|Weather APIs| K[weather.getForecast / getRealtimeWeather]
+    I -->|Place Search| L[place.searchPlaces / searchRestaurants]
+    I -->|Time Resolution| M[time.resolveTimeRange]
+    
+    J & K & L & M -->|Return Data| E & F & G
+    J & K & L & M -->|RAG Update / Cache| H
+    
+    E & F & G -->|Fully Processed JSON Payload| O[Intelligence Layer]
+    O -->|NIM LLM Reasoning + Rule Engine| P[Final Advice / Risk Assessment]
+    P -->|Response JSON| A
 ```
 
-> **Judge Strategy:** Judges can open the web app on any device (laptop/phone). PWA feels like a native app. The Gradio fallback ensures the system is always demonstrable even if the frontend isn't ready.
+---
+
+## 5. Tech Stack
+
+### 🛠️ Core Technology Components
+
+```mermaid
+mindmap
+  root((Weatherise v2<br/>Tech Stack))
+    Frontend
+      Next.js 14
+      React 18
+      TailwindCSS
+      Leaflet.js
+      Recharts
+    Backend
+      FastAPI
+      Uvicorn
+      SQLAlchemyAsyncpg
+      Pydantic v2
+      APScheduler
+    Agentic OS
+      LangGraph
+      NeMo Agent Toolkit
+      NeMo Guardrails
+      MCP Server
+    Storage
+      Qdrant Vector DB
+      PostgreSQL 16
+      Redis 7
+    NVIDIA Stack
+      Nemotron-3 Super NIM
+      nv-embedqa-e5-v5 NIM
+      Qwen-35-27B NIM
+      cuOpt Optimization
+      Earth2Studio
+      8x H200 GPU Cluster
+```
+
+| Layer | Component | Description |
+| :--- | :--- | :--- |
+| **Frontend** | **Next.js 14 (App Router)** | Powers the responsive PWA with Leaflet maps and Recharts dashboards. |
+| **Backend** | **FastAPI** | High-performance API Gateway with WebSocket streaming and background scheduler. |
+| **AI Orchestration**| **LangGraph & NeMo Agent Toolkit** | Manages multi-agent workflow routing and enforces safety guardrails. |
+| **Foundation Models**| **NVIDIA NIM** | Hosts Nemotron-3 Super 120B, nv-embedqa-e5-v5, and Qwen-35-27B. |
+| **Storage** | **Qdrant, PostgreSQL, Redis** | Qdrant for RAG vector search; PostgreSQL for relational logs; Redis for caching. |
+| **GPU Engine** | **NVIDIA cuOpt & Earth2Studio** | cuOpt runs routing algorithms; Earth2Studio manages Earth-2 forecasts. |
 
 ---
-## 🏗️ System Architecture
-### High-Level Architecture
-![alt text](diagram/image.png)
-### Tech Stack
-#### 🖥️ Frontend
-* **Gradio:** MVP Chat UI
-* **Next.js 14:** PWA Polish
-* **Leaflet.js:** Maps
-* **Recharts:** Weather Charts
 
-#### ⚡ Backend
-* **FastAPI:** API Gateway
-* **WebSocket:** Streaming
-* **Celery:** Task Queue
+## 6. Deployment Guide
 
-#### 🤖 AI / Agent Layer
-* **LangGraph:** Orchestration
-* **LangChain:** Agent Tools
-* **NIM:** LLM Serving
-* **NeMo Guardrails:** Safety
-* **APScheduler:** Weather Watcher
+### Prerequisites
+* Docker and Docker Compose installed.
+* NGC API Key for accessing NVIDIA NIM services (or pre-launched local NIM containers).
 
-#### 🧠 Models
-* **LLM Models (via NIM):** 
-  * Nemotron-3 Super 49B
-  * Llama 3.1 70B Instruct
-* **Embedding & Reranker:** 
-  * NV-Embed-v2
-  * NV-Rerank-Mistral-4B
-* **Weather Foundation Models:** 
-  * Earth-2 Atlas (Medium Range 15-day Forecast)
-  * Earth-2 FourCastNet (Fallback)
-* **High Resolution / Nowcasting (Future):** 
-  * Earth-2 CorrDiff (Downscaling)
-  * Earth-2 StormScope (Nowcasting)
+### Step 1: Set Up Environment Variables
+Copy the template configuration file:
+```bash
+cp .env.example .env
+```
+Open `.env` and populate the keys:
+* `NGC_API_KEY`: Your NVIDIA NGC API access token.
+* Add key credentials for weather services (e.g. `OPENWEATHERMAP_API_KEY`) if fallbacks are needed.
 
-#### 🗄️ Database / Storage
-* **Milvus:** Vectors
-* **PostgreSQL:** Structured
-* **Redis:** Cache + Sessions
+### Step 2: Launch with Docker Compose
+Start all containers in detached mode:
+```bash
+docker-compose -f infra/docker-compose.yml up -d
+```
+Verify container status:
+```bash
+docker ps
+```
+The application will be accessible via the Nginx Reverse Proxy on port `8080`:
+* **Web Client:** `http://localhost:8080/`
+* **API Gateway:** `http://localhost:8080/api`
+* **WebSocket Endpoint:** `ws://localhost:8080/ws`
 
-#### 🛠️ Infrastructure
-* **Docker + Docker Compose**
-* **Nginx:** Reverse Proxy
-* **Prometheus + Grafana:** Monitoring
-* **JupyterLab:** Dev Environment
+---
 
-#### 🟩 NVIDIA Stack
-* **cuOpt:** Route Optimization
-* **Earth2Studio:** Weather Framework
-* **GFS:** Initial Conditions
-* **NIM:** Containers
-* **NeMo:** Toolkit
+## 7. Database Seeding
 
-#### 📲 Notification + Export
-* **SpeedSMS:** Vietnam SMS
-* **Open-Meteo:** Free Weather
-* **Playwright:** Plan Image
-* **qrcode:** QR Generator
+Seed PostgreSQL schema and Qdrant RAG collections:
+
+1. **Initialize Relational Database:**
+   ```bash
+   docker exec -i weatherise-postgres psql -U weatherise -d weatherise < storage/postgres/locations_schema.sql
+   docker exec -i weatherise-postgres psql -U weatherise -d weatherise < storage/postgres/context_observability_tables.sql
+   ```
+
+2. **Run Python Seeding Script:**
+   ```bash
+   python knowledge/scripts/seed_all.py
+   ```
+
+Your Weatherise platform is now fully synchronized and operational!

@@ -1,109 +1,182 @@
-# 🔄 Luồng Dữ Liệu & Nguồn Dữ Liệu (Data Flow & Data Sources) — Weatherise v2
+# 🔄 Data Flow & Data Sources — Weatherise v2
 
-Tài liệu này làm rõ chi tiết các **nguồn dữ liệu** mà hệ thống **Weatherise** đang kết nối, cách dữ liệu được luân chuyển (Data Flow) qua các thành phần, và các cơ chế cache/lấy dữ liệu thời gian thực.
+This document details the data sources, runtime data routing, and processing pipelines within the **Weatherise v2** platform, hosted on an **8x NVIDIA H200 GPU Cluster** and orchestrated using **NVIDIA NeMo Agent Toolkit**.
 
 ---
 
-## 1. Bản Đồ Nguồn Dữ Liệu (Data Sources Map)
+## 1. Data Sources Map
 
-Hệ thống Weatherise tổng hợp thông tin từ nhiều nguồn dữ liệu tĩnh, động và mô hình AI để phục vụ việc phân tích rủi ro:
+The Weatherise platform aggregates static, dynamic, and AI-modeled data to establish rich operational contexts:
 
-| Loại dữ liệu | Nguồn cung cấp (Source) | Phương thức lấy (Method) | Vai trò trong hệ thống (Purpose) |
+| Data Type | Provider | Access Protocol | System Role / Purpose |
 | :--- | :--- | :--- | :--- |
-| **Dự báo thời tiết** | **Open-Meteo API** (Free) | REST API HTTPS (`api.open-meteo.com`) | Cung cấp dữ liệu dự báo chi tiết theo giờ (nhiệt độ, mưa, gió, độ ẩm, mã thời tiết) trong 7 ngày tới. |
-| **Thời tiết thực tế** | **Open-Meteo API** | Gọi trực tiếp từ FastAPI hoặc Web UI qua client | Hiển thị nhiệt độ, tốc độ gió, độ ẩm và lượng mưa trực tiếp ngoài Trang chủ cho Đà Nẵng, Hà Nội, TP.HCM. |
-| **Tọa độ địa lý** | **MCP Location Tool** | Kết nối qua cổng MCP Server (`resolveCoordinates`) | Dịch tên địa điểm người dùng nhập (ví dụ: *"Sa Pa"*, *"Đà Nẵng"*) thành tọa độ `latitude` và `longitude`. |
-| **Tìm kiếm Địa điểm** | **MCP Place Tool** | Gọi API tìm kiếm địa điểm | Tìm kiếm tọa độ và chi tiết của các địa điểm du lịch, công trình hoặc trang trại trong khu vực. |
-| **Khoảng thời gian** | **MCP Time Tool** | Logic xử lý thời gian thực | Chuyển đổi các từ ngữ thời gian tự nhiên (ví dụ: *"tuần tới"*, *"thứ 7 này"*) thành khoảng ngày tháng cụ thể (`start_date`, `end_date`). |
-| **Quy tắc rủi ro miền** | **PostgreSQL Database** | Truy vấn SQL qua SQLAlchemy | Lưu trữ các ngưỡng giới hạn rủi ro vật lý (ví dụ: nhiệt độ bao nhiêu là quá nóng cho đổ bê tông, lượng mưa bao nhiêu là nguy hiểm cho du lịch). |
-| **Tri thức lưu trữ (KB)** | **Qdrant (Vector DB)** | Tìm kiếm tương tự (Vector Similarity Search) | Lưu trữ các dữ liệu lịch sử thời tiết và kết quả phân tích RAG để làm giàu ngữ cảnh cho Agent. |
-| **Caching & Session** | **Redis Cache** | Đọc/Ghi Key-Value tốc độ cao | Lưu trữ tạm thời kết quả thời tiết của các thành phố để giảm tải số lần gọi API ngoài và lưu trữ session WebSocket. |
+| **Multi-Source Weather Forecast** | Open-Meteo, OpenWeatherMap, WeatherAPI, Tomorrow.io, Visual Crossing, 7Timer, StormGlass | REST API via **MCP Server** | Provides hourly temperature, precipitation probability, humidity, wind speed, wind gusts, UV index, and storm risk. |
+| **Live Local Weather** | Open-Meteo API | Direct HTTPS REST fetch | Powers the home screen clock and live weather widgets for Da Nang, Hanoi, and Ho Chi Minh City. |
+| **Geographical Geocoding** | Nominatim / OSM | MCP Location Tool (`resolveCoordinates`) | Resolves user-entered locations (e.g. *"Son Tra Peninsula"*) into latitude and longitude coordinates. |
+| **Point of Interest (POI) Database** | OpenStreetMap (OSM) Overpass API | MCP Place Tool (`searchPlaces`) | Sours tourist attractions, museums, and historical landmarks surrounding resolved coordinates. |
+| **Restaurant Databases** | PostgreSQL / OSM Overpass API | MCP Place Tool (`searchRestaurants`) | Sours food venues for localized clusters to minimize itinerary transit distances. |
+| **Temporal Parsing** | Python Datetime Logic | MCP Time Tool (`resolveTimeRange`) | Translates conversational time targets (e.g., *"next weekend"*) into concrete calendar dates. |
+| **Domain-Specific KB (RAG)** | Qdrant (Vector DB) & PostgreSQL | Vector Similarity Search (NIM Embed) | Holds safety margins, regulatory thresholds, historical climates, and tourist articles. |
+| **Caching & Session Storage** | Redis 7 (Alpine) | Key-Value Cache (TTL 1 hour) | Caches external API responses to prevent rate-limiting, and stores active WebSocket session data. |
 
 ---
 
-## 2. Sơ Đồ Luồng Dữ Liệu Tổng Thể (Overall Data Flow Diagram)
+## 2. Overall Runtime Data Flow Diagram
 
-Dưới đây là sơ đồ chi tiết biểu diễn hành trình của dữ liệu từ yêu cầu ban đầu cho đến phản hồi kết quả:
+The following detailed sequence diagram illustrates the lifecycle of a query from the Web interface to final output:
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as Người dùng (UI)
-    participant Web as Web Frontend (Next.js)
-    participant API as API Gateway (FastAPI)
-    participant Agent as Orchestrator / Context Agent
-    participant MCP as MCP Server (Gateway)
-    participant Ext as Open-Meteo API (External)
-    participant DB as Qdrant & Postgres (KB)
-    participant LLM as NVIDIA NIM LLM (Nemotron-3)
+    actor User as User (Web Client / PWA)
+    participant Web as Next.js Web PWA
+    participant API as FastAPI Backend
+    participant Guard as NeMo Guardrails
+    participant Orch as Orchestrator Agent (LangGraph)
+    participant Context as Domain Context Agent
+    participant MCP as MCP Server Gateway
+    participant Ext as External APIs (Weather / OSM)
+    participant KB as Knowledge Base (Qdrant / PG)
+    participant NIM as NVIDIA NIM (Nemotron-3 120B)
 
-    %% Luồng thời tiết trực tiếp ngoài Trang chủ
-    Note over User, Ext: [LUỒNG TRANG CHỦ - LIVE WEATHER & CLOCK]
-    Web->>API: GET /api/weather/current
-    API->>Ext: Yêu cầu dữ liệu thời tiết thực tế (Hanoi, Da Nang, HCMC)
-    Ext-->>API: Trả về nhiệt độ, độ ẩm, gió, lượng mưa
-    Note over API: (Nếu lỗi, API sẽ tự động lấy dữ liệu Fallback)
-    API-->>Web: Trả về JSON thông số thời tiết
-    Note over Web: Cập nhật widget hiển thị Da Nang Live Widget cùng đồng hồ thời gian thực
-
-    %% Luồng Chat truy vấn rủi ro
-    Note over User, LLM: [LUỒNG TRUY VẤN - CHAT PIPELINE]
-    User->>Web: Nhập truy vấn (ví dụ: "Du lịch Đà Nẵng tuần tới tránh mưa lớn")
-    Web->>API: Gửi truy vấn qua WebSocket (hoặc POST /api/chat)
+    %% Initialization
+    User->>Web: Input query ("3-day trip to Da Nang avoiding storms")
+    Web->>API: Send query via WebSocket connection
     
-    %% Parser
-    API->>LLM: Gửi text thô để phân tích (Parser Agent)
-    LLM-->>API: Trả về JSON cấu trúc ban đầu (Location, Domain, Time_range)
+    %% Input Security
+    API->>Guard: Evaluate query safety (Input Guardrails)
+    Guard-->>API: Approve request (Safe, In-domain)
     
-    %% Orchestrator & Context
-    API->>Agent: Chuyển dữ liệu cấu trúc cho Orchestrator
-    Note over Agent: Xác định Domain (Tourism/Construction/Agri)
+    %% Natural Language Parsing
+    API->>NIM: Parse query using Parser NIM (Qwen-35-27B)
+    NIM-->>API: Return structured JSON (domain: tourism, location: Da Nang, duration: 3)
     
-    %% Context Agent & MCP
-    Agent->>MCP: Gọi công cụ MCP xử lý Tọa độ & Thời gian
-    MCP-->>Agent: Trả về Tọa độ (Lat/Lon) và Start/End Date
+    %% Orchestration routing
+    API->>Orch: Start LangGraph state loop
+    Orch->>Context: Route state to TourismContextAgent
     
-    Agent->>DB: Đọc tri thức miền ổn định & Quy tắc rủi ro
-    DB-->>Agent: Trả về dữ liệu tri thức có sẵn
+    %% Location & Time resolution
+    Context->>MCP: Call location.resolveCoordinates & time.resolveTimeRange
+    MCP->>Ext: Query geocoding / timezone APIs
+    Ext-->>MCP: Return latitude/longitude & start/end dates
+    MCP-->>Context: Return resolved location and temporal coordinates
     
-    Agent->>MCP: Yêu cầu thông tin thời tiết động (Thời tiết dự báo)
-    MCP->>Ext: GET https://api.open-meteo.com/v1/forecast (Lat/Lon)
-    Ext-->>MCP: Trả về dữ liệu thời tiết 7 ngày
-    MCP-->>Agent: Trả về payload thời tiết làm giàu
+    %% RAG search
+    Context->>KB: Search local vector collection (Qdrant RAG)
+    KB-->>Context: Return static cached attractions and rules
     
-    %% RAG Update
-    Agent->>DB: Lưu trữ cập nhật kết quả ngữ cảnh vào Vector DB / Cache
+    %% Context Gap Analysis & Telemetry fetch
+    Context->>Context: Generate ContextGapReport (Missing variables check)
     
-    %% Intelligence Layer
-    Agent->>API: Trả về Payload ngữ cảnh đầy đủ (Fully Processed JSON)
-    Note over API: Chạy Bộ quy tắc rủi ro cứng (Rule Engine) để chấm điểm Rain, Wind, Heat
-    API->>LLM: Gửi ngữ cảnh đầy đủ + Điểm rủi ro để suy luận lời khuyên
-    LLM-->>API: Trả về câu trả lời tự nhiên + Lời khuyên tối ưu
+    alt Missing POIs or Restaurants
+        Context->>MCP: Call place.searchPlaces / searchRestaurants
+        MCP->>Ext: Query OpenStreetMap Overpass
+        Ext-->>MCP: Return surrounding venues / restaurants
+        MCP-->>Context: Return missing locations list
+    end
     
-    API-->>Web: Trả về JSON kết quả cuối cùng (Final Chat Response)
-    Web-->>User: Hiển thị giao diện chia đôi (Bảng kết quả & Khung soạn thảo)
+    %% Weather evidence retrieval
+    Context->>MCP: Call weather.getForecast (coordinates, dates)
+    MCP->>Ext: Request forecast from Open-Meteo & others
+    Ext-->>MCP: Return raw multi-source weather payload
+    MCP-->>Context: Return weather telemetry
+    
+    %% Cache & Return
+    Context->>KB: Cache fetched POIs & Weather in Redis/Qdrant
+    Context-->>Orch: Return fully-enriched payload JSON
+    Orch-->>API: Return completed state payload
+    
+    %% Intelligence Reasoning & Localization
+    API->>API: Run Prediction Engine (deterministic risk score)
+    API->>NIM: Send full prompt (context + risk score) for final reasoning
+    NIM-->>API: Return English advice & plan
+    
+    alt User language is Vietnamese
+        API->>NIM: Request localization from Vietnamese Localizer NIM
+        NIM-->>API: Return naturalized Vietnamese text
+    end
+    
+    API->>Guard: Check response safety (Output Guardrails)
+    Guard-->>API: Response approved
+    
+    API-->>Web: Push final response payload (Advice JSON + Route Coordinates)
+    Web-->>User: Render split-screen UI (interactive Leaflet map + weather charts)
 ```
 
 ---
 
-## 3. Luồng Xử Lý Chi Tiết (Runtime Execution Stages)
+## 3. Detailed Runtime Processing Stages
 
-### Giai đoạn 1: Phân tích Cú pháp (Parsing Stage)
-Khi người dùng nhập yêu cầu, hệ sinh thái AI sử dụng mô hình **NVIDIA NIM (Nemotron-3 Super 120B)** đóng vai trò Parser. Đầu ra của Parser là một tài liệu JSON được chuẩn hóa, giúp hệ thống biết chính xác:
-* **Địa điểm cần phân tích** (`location`)
-* **Thời gian cần dự báo** (`time_range`)
-* **Lĩnh vực cần đánh giá** (`domain`)
+### Stage 1: Parsing and intent extraction (Parsing Stage)
+When a raw natural language query is submitted, it is processed by the **Qwen-35-27B Parser NIM** running on the H200 GPU cluster. The output is a validated JSON structure specifying:
+* **Location** (`location`): Extracted target city or region.
+* **Temporal Range** (`time_range`): Start and end dates computed from natural phrasing.
+* **Operational Domain** (`domain`): Identified industry sector (`tourism`, `construction`, or `agriculture`).
+* **User Constraints** (`user_constraints`): Explicit constraints (e.g. *"avoid rain"*, *"outdoor activity only"*).
 
-### Giai đoạn 2: Định tuyến & Làm giàu Ngữ cảnh (Routing & Enrichment)
-**Orchestrator** chuyển tiếp payload đến Agent chuyên môn. Agent này sẽ gọi các công cụ MCP:
-1. Gửi tên địa điểm đến **MCP Location** để chuyển hóa thành Lat/Lon.
-2. Gửi thời gian đến **MCP Time** để dịch thành các ngày cụ thể.
-3. Sử dụng Lat/Lon và các ngày để gọi API **Open-Meteo** lấy thông tin dự báo thời tiết chi tiết theo giờ (Nhiệt độ, Gió, Mưa, Độ ẩm, Mã thời tiết).
+### Stage 2: Routing & Context Enrichment
+The **Orchestrator Agent** (modeled in LangGraph) takes the structured JSON and routes it to the corresponding context agent. The agent executes a multi-step enrichment pipeline:
+1. **Coordinates Resolution:** Calls MCP Server (`location.resolveCoordinates`) to get latitude and longitude.
+2. **Temporal Resolution:** Calls MCP Server (`time.resolveTimeRange`) to align raw texts to concrete ISO dates.
+3. **Knowledge Base Search:** Query local Qdrant vectors and PostgreSQL database schemas to pull static rules, historical risks, and offline entities.
+4. **Context Gap Recovery:** Evaluates the retrieved data. If the POI or restaurant counts are below acceptable thresholds (sparse results), it fires dynamic fallbacks (`place.searchPlaces`, `place.searchRestaurants`) to fetch live OSM nodes.
 
-### Giai đoạn 3: Đánh giá Rủi ro và Lập luận (Risk Assessment & Reasoning)
-Sau khi thu thập đầy đủ dữ liệu, hệ thống đưa vào **Intelligence Layer**:
-* **Rule Engine (Chấm điểm quy tắc cứng):** Chạy kiểm tra các ngưỡng vật lý để đánh giá mức độ rủi ro (RAIN, WIND, HEAT) thành các mức `LOW`, `MEDIUM`, hoặc `HIGH`.
-* **NIM LLM Reasoning:** Đưa toàn bộ điểm số rủi ro cứng kèm thông số thời tiết và tri thức miền đã làm giàu vào LLM để tạo ra lời khuyên, đề xuất hành động thực tiễn bằng ngôn ngữ tự nhiên.
+### Stage 3: Risk Assessment & Reasoning (Intelligence Layer)
+The gathered context is forwarded to the **Intelligence Layer**:
+* **Rule Engine:** Calculates hard physical risk ratings (RAIN, WIND, HEAT) based on domain thresholds (e.g., concrete pouring temperature limits, crane wind gust limits).
+* **NIM LLM Reasoning:** Inputs the validated weather data, site parameters, and calculated risk metrics into the **Nemotron-3 Super 120B NIM** to draft personalized plans and safety recommendations.
+* **Localization Engine:** If the input language is identified as Vietnamese, a final localization pass is performed using **Qwen-35-27B** to ensure professional, culturally fluent phrasing.
 
-### Giai đoạn 4: Hiển thị Trực quan (Frontend Presentation)
-Dữ liệu cuối cùng được gửi về Next.js Frontend để render ra thẻ kết quả chia đôi màn hình độc đáo, giúp người dùng nắm bắt thông tin nhanh chóng.
+---
+
+## 4. Path B Weather Consensus Ingestion Pipeline
+
+To protect the system against weather provider outages or false telemetries, Weatherise v2 uses the **Path B Weather Consensus** pipeline:
+
+```mermaid
+flowchart TD
+    A[Context Agent Payload] --> B[Weather Requirement Reader]
+    B --> C[Weather Source Planner]
+    C --> D[Multi-Source Weather Fetcher]
+    
+    subgraph Fetch ["Asynchronous Fetch Gateway"]
+        D -->|HTTP GET| E[Open-Meteo]
+        D -->|HTTP GET| F[WeatherAPI]
+        D -->|HTTP GET| G[Tomorrow.io]
+    end
+    
+    E & F & G --> H[Evidence Store: Save Raw JSONs]
+    H --> I[Source-Specific Normalizer]
+    I --> J[Weather Quality Validator]
+    
+    subgraph Val ["Validation & Scoring"]
+        J -->|Filter invalid values| K[Valid Records]
+        J -->|Filter empty fields| L[Invalid/Skipped Sources]
+        K --> M[Source Scorer & Comparison Matrix]
+    end
+    
+    M --> N[Weather Fusion Engine: Weighted Blend]
+    N --> O[NVIDIA NIM Weather Arbiter]
+    O --> P[Gold Weather Decision Builder]
+    P --> Q[Selected Weather Output to Intelligence Layer]
+```
+
+1. **Requirements Analysis:** Reading the required physical weather variables (e.g. soil moisture for farming, wind gusts for crane operations).
+2. **Dynamic Ingestion Planning:** Deciding which weather APIs to query based on regional reliability and cost.
+3. **Evidence Ingestion:** Querying all selected APIs asynchronously via MCP and saving the raw JSON responses into the `weather_evidence` audit directory.
+4. **Normalization & Quality Validation:** Normalizing diverse schemas into unified hourly records, testing for out-of-bound errors, and discarding failed sources.
+5. **Consensus Arbitration:** Computing a weighted fusion of all valid forecasts, and passing the comparison matrix to a **NIM Weather Arbiter** to select the single most accurate consensus (Gold Weather Decision).
+
+---
+
+## 5. GPU Acceleration and Security Enforcements
+
+### ⚡ Infrastructure: 8x NVIDIA H200 GPU Cluster
+* **Parallel Token Generation:** Splitting the large **Nemotron-3 Super 120B** across 4 GPUs (TP=4) enables sub-second token generation speeds, eliminating typical multi-agent system latency bottlenecks.
+* **High-Throughput Routing:** Dedicated GPUs for embedding generation and route optimization (via **NVIDIA cuOpt**) ensure the backend can process complex itineraries concurrently.
+
+### 🛡️ Orchestration Security: NeMo Agent Toolkit & Guardrails
+* **NeMo Agent Toolkit:** Enforces strict parameter validation schemas and secure execution boundaries for all agent tools, preventing malicious environment escapes.
+* **NeMo Guardrails:** Wraps the system in dual security layers:
+  * **Input Level:** Automatically blocks SQL injection attempts, prompt jailbreaks, and out-of-domain conversational queries.
+  * **Output Level:** Audits the generated advice text to prevent factual hallucinations, ensuring all weather warnings adhere strictly to pre-defined safety rules.

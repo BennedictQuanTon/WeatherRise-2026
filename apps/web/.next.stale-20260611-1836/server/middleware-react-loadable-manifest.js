@@ -1,1 +1,0 @@
-self.__REACT_LOADABLE_MANIFEST="{\"app/page.tsx -> @/components/map/TripMapPanel\":{\"id\":\"app/page.tsx -> @/components/map/TripMapPanel\",\"files\":[\"static/css/_app-pages-browser_components_map_TripMapPanel_tsx.css\",\"static/chunks/_app-pages-browser_components_map_TripMapPanel_tsx.js\"]}}"
