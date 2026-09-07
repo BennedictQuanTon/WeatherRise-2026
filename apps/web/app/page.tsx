@@ -743,33 +743,34 @@ function DomainSafetyOverviewSection({ overview }: { overview?: DomainOverviewDa
                 : "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800";
 
               return (
-                <div key={idx} className={`rounded-2xl border p-4 flex flex-col justify-between space-y-3 shadow-sm ${sevBorder}`}>
-                  <div className="space-y-1.5">
-                    <div className="flex items-start justify-between gap-1.5">
-                      <span className="text-xs font-black text-slate-900 dark:text-white leading-tight">
-                        {hazard.title}
-                      </span>
-                      <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border shrink-0 ${sevBadge}`}>
+                <div key={idx} className={`rounded-2xl border p-4 flex flex-col justify-between gap-3 shadow-sm overflow-hidden ${sevBorder}`}>
+                  <div className="space-y-2">
+                    <div className="text-xs font-black text-slate-900 dark:text-white leading-snug break-words">
+                      {hazard.title}
+                    </div>
+                    
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border inline-block max-w-full truncate ${sevBadge}`}>
                         {hazard.status}
                       </span>
-                    </div>
-                    <div className="text-[10px] font-bold text-blue-600 dark:text-cyan-400">
-                      {hazard.standard_code}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1 text-xs">
-                    <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-                      <span>Standard Limit:</span>
-                      <span className="font-bold text-slate-700 dark:text-slate-200">{hazard.threshold_limit}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-                      <span>Observed / Forecast:</span>
-                      <span className="font-black text-slate-900 dark:text-white">{hazard.observed_value}</span>
+                      <span className="text-[10px] font-bold text-blue-600 dark:text-cyan-400 truncate">
+                        {hazard.standard_code}
+                      </span>
                     </div>
                   </div>
 
-                  <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 pt-2 border-t border-slate-200/50 dark:border-white/5 leading-relaxed">
+                  <div className="space-y-1.5 text-xs bg-slate-100/70 dark:bg-white/[0.03] p-2.5 rounded-xl border border-slate-200/50 dark:border-white/5">
+                    <div>
+                      <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Standard Limit</div>
+                      <div className="text-xs font-bold text-slate-700 dark:text-slate-200 break-words leading-tight mt-0.5">{hazard.threshold_limit}</div>
+                    </div>
+                    <div className="pt-1.5 border-t border-slate-200/40 dark:border-white/5">
+                      <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Observed / Forecast</div>
+                      <div className="text-xs font-black text-slate-900 dark:text-white break-words leading-tight mt-0.5">{hazard.observed_value}</div>
+                    </div>
+                  </div>
+
+                  <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 pt-2 border-t border-slate-200/50 dark:border-white/5 leading-relaxed break-words">
                     {hazard.impact_description}
                   </p>
                 </div>
@@ -1654,10 +1655,10 @@ export default function HomePage() {
         }`}
         style={{
           backgroundColor: isChatActive
-            ? (theme === "dark" ? "rgba(3, 7, 18, 0.88)" : "rgba(255, 255, 255, 0.85)")
+            ? (theme === "dark" ? "#030712" : "#f8fafc")
             : undefined,
-          backdropFilter: isChatActive ? "blur(7px)" : undefined,
-          WebkitBackdropFilter: isChatActive ? "blur(7px)" : undefined
+          backdropFilter: isChatActive ? "blur(12px)" : undefined,
+          WebkitBackdropFilter: isChatActive ? "blur(12px)" : undefined
         }}
       />
 
@@ -1896,12 +1897,12 @@ export default function HomePage() {
                   ? "rgba(239, 68, 68, 0.25)" 
                   : overallRisk === "medium" 
                   ? "rgba(245, 158, 11, 0.22)" 
-                  : "var(--color-border)";
+                  : (theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(226, 232, 240, 0.9)");
                 const dynamicBg = overallRisk === "high"
-                  ? "radial-gradient(ellipse at 50% 0%, rgba(239, 68, 68, 0.08) 0%, var(--bg-secondary) 80%)"
+                  ? "radial-gradient(ellipse at 50% 0%, rgba(239, 68, 68, 0.05) 0%, var(--bg-secondary) 80%)"
                   : overallRisk === "medium"
-                  ? "radial-gradient(ellipse at 50% 0%, rgba(245, 158, 11, 0.06) 0%, var(--bg-secondary) 80%)"
-                  : "radial-gradient(ellipse at 50% 0%, rgba(34, 211, 238, 0.04) 0%, var(--bg-secondary) 80%)";
+                  ? "radial-gradient(ellipse at 50% 0%, rgba(245, 158, 11, 0.04) 0%, var(--bg-secondary) 80%)"
+                  : "var(--bg-secondary)";
 
                 const isTripPlan = latestResult && latestResult.response_type === "trip_planning" && latestResult.trip_view;
 
