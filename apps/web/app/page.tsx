@@ -1745,7 +1745,7 @@ export default function HomePage() {
                   {/* Category Buttons Stretched Row */}
                   <div className="flex flex-row gap-3 mt-4 max-w-xl w-full">
                     {[
-                      { name: "Tourism", icon: Briefcase, q: "Plan a 3-day trip to Da Nang next week and avoid heavy rain" },
+                      { name: "Tourism", icon: Briefcase, q: "Plan a 3-day trip to Da Nang next week for sightseeing" },
                       { name: "Construction", icon: Building, q: "Is tomorrow safe for concrete pouring at my construction site in Da Nang?" },
                       { name: "Agriculture", icon: Leaf, q: "Should I irrigate my rice farm this week in Hoa Vang, Da Nang?" }
                     ].map((p, i) => {
@@ -1850,7 +1850,7 @@ export default function HomePage() {
                   desc="Get weather-aware travel recommendations tailored to your journey." 
                   icon={Briefcase} 
                   iconBg="bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400"
-                  onClick={() => sendMessage("Plan a 3-day trip to Da Nang next week and avoid heavy rain")} 
+                  onClick={() => sendMessage("Plan a 3-day trip to Da Nang next week for sightseeing")} 
                   type="tourism"
                 />
                 <PopularMockCard 
