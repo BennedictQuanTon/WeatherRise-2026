@@ -1,18 +1,26 @@
 /** @type {import('next').NextConfig} */
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8088";
+const externalApiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL;
+const hasExternalApi =
+  Boolean(externalApiUrl) &&
+  !externalApiUrl.includes("localhost") &&
+  !externalApiUrl.includes("127.0.0.1");
 
 const nextConfig = {
-  output: "standalone",
+  reactStrictMode: true,
   async rewrites() {
+    if (!hasExternalApi) {
+      // In Vercel standalone demo mode, Next.js App Router API route handlers handle requests directly
+      return [];
+    }
     return [
       // Health proxy
-      { source: "/health", destination: `${API_URL}/health` },
+      { source: "/health", destination: `${externalApiUrl}/health` },
       // Monitor SSE stream
-      { source: "/api/monitor/stream", destination: `${API_URL}/api/monitor/stream` },
-      { source: "/api/monitor/logs", destination: `${API_URL}/api/monitor/logs` },
+      { source: "/api/monitor/stream", destination: `${externalApiUrl}/api/monitor/stream` },
+      { source: "/api/monitor/logs", destination: `${externalApiUrl}/api/monitor/logs` },
       // Chat + WebSocket
-      { source: "/api/:path*", destination: `${API_URL}/api/:path*` },
-      { source: "/ws", destination: `${API_URL}/ws` },
+      { source: "/api/:path*", destination: `${externalApiUrl}/api/:path*` },
+      { source: "/ws", destination: `${externalApiUrl}/ws` },
     ];
   },
 };

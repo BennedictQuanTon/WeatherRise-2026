@@ -1,0 +1,5 @@
+Layer_ID,Layer_Name,Core_Technologies_and_Models,Architectural_Role
+1,Frontend & Interface,"Next.js 14, TailwindCSS, Leaflet.js, Recharts, WebSockets","Mobile-first PWA, interactive route maps, weather risk charts, and real-time execution monitor"
+2,Multi-Agent & LLMs,"LangGraph, NeMo Guardrails, Nemotron-3 Super 120B NIM, Qwen-35-27B NIM, nv-embedqa-e5-v5 NIM","Stateful agent orchestration, intent parsing, safety guardrails, deep reasoning, and weather arbitration"
+3,Tools & Data (MCP),"Model Context Protocol (MCP), NVIDIA cuOpt, Qdrant, PostgreSQL (PostGIS), Redis 7, Open-Meteo","Standardized tool contracts, TSP route optimization, vector RAG, geospatial storage, and multi-source weather ingestion"
+4,Backend & Infrastructure,"FastAPI, Nginx, Docker, 8x NVIDIA H200 SXM5 Cluster","Async API gateway, reverse proxy, container orchestration, and high-bandwidth GPU cluster execution"

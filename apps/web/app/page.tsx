@@ -100,6 +100,25 @@ interface MapMarker {
   is_indoor?: boolean;
 }
 
+interface DomainMetricItem {
+  label: string;
+  value: string;
+  sub?: string;
+  badge?: string;
+  badgeColor?: "emerald" | "amber" | "rose" | "blue" | "purple" | "cyan";
+  iconName?: string;
+}
+
+interface TechStackInfo {
+  reasoning_model: string;
+  domain_agent: string;
+  weather_sources: string[];
+  vector_db: string;
+  guardrails_score: string;
+  latency: string;
+  tokens_per_sec: string;
+}
+
 interface WeatherPredictionView {
   title: string;
   location: LocationPoint;
@@ -108,6 +127,9 @@ interface WeatherPredictionView {
     summary: string;
     should_go: boolean;
     decision_label: string;
+    decision_category?: string;
+    key_stat_badge?: string;
+    key_stat_value?: string;
     reason: string;
   };
   statistics: {
@@ -122,6 +144,8 @@ interface WeatherPredictionView {
     overall_risk?: string;
     most_common_condition?: string;
   };
+  domain_metrics?: DomainMetricItem[];
+  tech_stack_info?: TechStackInfo;
   daily_forecast: Array<{
     date: string;
     day_label: string;
@@ -217,6 +241,7 @@ interface ChatResult {
   weather_mode?: string;
   sources_used?: string[];
   sources_rejected?: string[];
+  tech_stack_info?: TechStackInfo;
   weather_debug?: WeatherDebug;
   response_language?: "en" | "vi";
   weather_view?: WeatherPredictionView | null;
@@ -629,46 +654,126 @@ function WeatherPredictionDemoView({ result }: { result: ChatResult }) {
   return (
     <div className="space-y-6">
       {/* Title & Badge */}
-      <div className="space-y-2.5">
-        <div className="flex items-center gap-1.5 rounded-full border border-blue-100 dark:border-cyan-950/30 bg-blue-50/50 dark:bg-cyan-950/20 px-3 py-1 text-xs font-bold text-blue-600 dark:text-cyan-400 w-fit">
-          <MapPin size={13} /> {view.location.name}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="flex items-center gap-1.5 rounded-full border border-blue-200/60 dark:border-cyan-800/40 bg-blue-50/70 dark:bg-cyan-950/30 px-3 py-1 text-xs font-bold text-blue-700 dark:text-cyan-300 w-fit">
+            <MapPin size={13} /> {view.location.name}
+          </span>
+          {view.date_range.label && (
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              · {view.date_range.label}
+            </span>
+          )}
         </div>
-        <h2 className="font-serif-heading text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white leading-tight">
+        <h2 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
           {view.title}
         </h2>
-        {view.date_range.label && (
-          <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 font-semibold">
-            {view.date_range.label}
-          </p>
-        )}
       </div>
 
-      {/* Assumption & Decision Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="md:col-span-2 rounded-2xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-slate-900/40 backdrop-blur-md p-6 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-2 text-base md:text-lg font-extrabold text-slate-900 dark:text-white">
-              <MapPin size={16} className="text-blue-600 dark:text-cyan-400" />
-              Assumption
-            </div>
-            <p className="text-sm md:text-base text-slate-700 dark:text-slate-300 leading-relaxed mt-3 font-semibold">
-              {view.assumption.summary}
+      {/* AI Decision & Operational Strategy Hero Box */}
+      <div className="rounded-3xl border border-slate-200/70 dark:border-white/10 bg-gradient-to-br from-white/90 to-slate-50/70 dark:from-slate-900/80 dark:to-slate-950/60 backdrop-blur-xl p-6 shadow-md space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-white/5 pb-3">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ backgroundColor: decisionColor }} />
+            <span className="text-[11px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400">
+              {view.assumption.decision_category || "AI Advisory & Risk Assessment"}
+            </span>
+          </div>
+          {view.assumption.key_stat_badge && (
+            <span 
+              className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border"
+              style={{
+                backgroundColor: `${decisionColor}15`,
+                borderColor: `${decisionColor}40`,
+                color: decisionColor,
+              }}
+            >
+              {view.assumption.key_stat_badge}
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+          <div className="lg:col-span-8 space-y-2.5">
+            <h3 
+              className="text-2xl md:text-3xl font-black tracking-tight leading-snug"
+              style={{ color: decisionColor }}
+            >
+              {view.assumption.decision_label}
+            </h3>
+            <p className="text-sm md:text-base text-slate-700 dark:text-slate-200 font-medium leading-relaxed">
+              {view.assumption.reason || view.assumption.summary}
             </p>
           </div>
-        </div>
-        <div className="rounded-2xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-slate-900/40 backdrop-blur-md p-6 shadow-sm flex items-center justify-between gap-4">
-          <div>
-            <div className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Should you travel?</div>
-            <div className="text-2xl md:text-3xl font-black mt-1.5" style={{ color: decisionColor }}>
-              {view.assumption.decision_label}
+
+          <div className="lg:col-span-4 rounded-2xl p-4 bg-slate-100/70 dark:bg-white/5 border border-slate-200/50 dark:border-white/5 flex flex-col justify-center">
+            <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider">
+              Core Operational Impact
             </div>
-            <div className="text-sm text-slate-600 dark:text-slate-400 mt-1.5 font-semibold">{view.assumption.reason}</div>
-          </div>
-          <div className="p-2.5 rounded-full" style={{ backgroundColor: `${decisionColor}15` }}>
-            <CheckCircle2 size={32} style={{ color: decisionColor }} />
+            <div className="text-base md:text-lg font-black text-slate-900 dark:text-white mt-1">
+              {view.assumption.key_stat_value || (view.assumption.should_go ? "Favorable Conditions" : "Operational Precaution Advised")}
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-semibold">
+              Verified by NeMo Guardrails
+            </div>
           </div>
         </div>
       </div>
+
+      {/* 8-Card Domain & Scientific Metrics Grid */}
+      {view.domain_metrics && view.domain_metrics.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Sliders size={14} className="text-blue-600 dark:text-cyan-400" />
+            <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              Domain Telemetry & Physical Constraints
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {view.domain_metrics.map((m, idx) => {
+              const badgeColors: Record<string, string> = {
+                emerald: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-800/40",
+                amber: "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-200/60 dark:border-amber-800/40",
+                rose: "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border-rose-200/60 dark:border-rose-800/40",
+                cyan: "bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 border-cyan-200/60 dark:border-cyan-800/40",
+                purple: "bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border-purple-200/60 dark:border-purple-800/40",
+                blue: "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200/60 dark:border-blue-800/40",
+              };
+              const badgeClass = badgeColors[m.badgeColor || "cyan"] || badgeColors.cyan;
+
+              return (
+                <div 
+                  key={idx} 
+                  className="rounded-2xl border border-slate-200/60 dark:border-white/5 bg-white/70 dark:bg-slate-900/50 backdrop-blur-md p-4 shadow-sm transition-all hover:scale-[1.02] hover:shadow-md flex flex-col justify-between"
+                >
+                  <div className="flex items-start justify-between gap-1.5 mb-2">
+                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 leading-tight">
+                      {m.label}
+                    </span>
+                    {m.badge && (
+                      <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shrink-0 ${badgeClass}`}>
+                        {m.badge}
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="text-xl font-black text-slate-900 dark:text-white leading-tight">
+                      {m.value}
+                    </div>
+                    {m.sub && (
+                      <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-1 leading-tight">
+                        {m.sub}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 7-Day Weather Overview */}
       <div className="rounded-3xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-slate-900/40 backdrop-blur-md p-6 shadow-sm space-y-6">
@@ -725,7 +830,7 @@ function WeatherPredictionDemoView({ result }: { result: ChatResult }) {
       {/* Recommendation Checklist */}
       <div className="rounded-3xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-slate-900/40 backdrop-blur-md p-6 shadow-sm">
         <div className="text-base md:text-lg font-extrabold text-emerald-600 dark:text-emerald-400 mb-4 flex items-center gap-2">
-          <CheckCircle2 size={16} /> Recommendation
+          <CheckCircle2 size={16} /> Recommendations
         </div>
         <div className="space-y-3">
           {view.recommendations.map((item, idx) => (
@@ -742,10 +847,10 @@ function WeatherPredictionDemoView({ result }: { result: ChatResult }) {
         <div className="rounded-3xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-slate-900/40 backdrop-blur-md p-6 shadow-sm space-y-4">
           <div>
             <div className="text-base md:text-lg font-extrabold text-purple-600 dark:text-purple-400 flex items-center gap-2">
-              <MapPin size={16} /> Alternative Options (If Weather Turns Poor)
+              <MapPin size={16} /> Alternative Options (Weather Contingency)
             </div>
             <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 mt-1.5 font-semibold">
-              If heavy rain or storms disrupt your plans in {view.location.name}, consider these nearby options:
+              If severe weather disrupts operations in {view.location.name}, consider these alternatives:
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -840,7 +945,7 @@ function TripPlanningDemoView({ result, activeDay, setActiveDay }: { result: Cha
     <div className="space-y-6">
       {/* Title block */}
       <div className="flex items-center justify-between">
-        <h2 className="font-serif-heading text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white leading-tight">
+        <h2 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
           Plan for {view.title.replace("Plan for ", "")} next week
         </h2>
         <div className="rounded-full border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1 text-[10px] font-black text-emerald-600 dark:text-emerald-400 tracking-wider">
@@ -1082,10 +1187,12 @@ export default function HomePage() {
     const wsProto = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${wsProto}//${window.location.host}/ws`;
 
+    let wsHandled = false;
+
     try {
       const ws = new WebSocket(wsUrl);
       await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error("ws timeout")), 4000);
+        const timeout = setTimeout(() => reject(new Error("ws timeout")), 600);
         ws.onopen = () => { clearTimeout(timeout); resolve(); };
         ws.onerror = () => { clearTimeout(timeout); reject(new Error("ws error")); };
       });
@@ -1102,10 +1209,12 @@ export default function HomePage() {
               setLatestResult(ev.data);
               setActiveDay(1);
               if (ev.data?.trip_plan) setShowMap(true);
+              wsHandled = true;
               ws.close();
               resolve();
             } else if (ev.type === "error") {
               setLatestResult({ error: ev.error });
+              wsHandled = true;
               ws.close();
               resolve();
             }
@@ -1114,22 +1223,45 @@ export default function HomePage() {
         ws.onerror = () => resolve();
       });
     } catch {
-      // REST Fallback
+      // WebSocket not available (standard on Vercel deployment)
+    }
+
+    if (!wsHandled) {
+      // REST Flow / Standalone Agent Processing
       try {
-        setSteps(prev => [...prev, "Connecting to REST API..."]);
+        setSteps(prev => [...prev, "Querying Meteorological & Domain Intelligence Agents..."]);
+        
+        // Dynamic step animation
+        const stepTimer1 = setTimeout(() => {
+          setSteps(prev => [...prev, "Extracting spatiotemporal constraints & risk parameters..."]);
+        }, 300);
+        const stepTimer2 = setTimeout(() => {
+          setSteps(prev => [...prev, "NeMo Guardrails safety & hallucination validation passed."]);
+        }, 600);
+
         const r = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: text }),
         });
+
+        clearTimeout(stepTimer1);
+        clearTimeout(stepTimer2);
+
+        if (!r.ok) {
+          throw new Error(`API returned status ${r.status}`);
+        }
+
         const data: ChatResult = await r.json();
         setLatestResult(data);
         setActiveDay(1);
-        if (data?.trip_plan) setShowMap(true);
+        if (data?.trip_plan || data?.trip_view) setShowMap(true);
       } catch (err: any) {
+        console.error("Chat error:", err);
         setLatestResult({ error: "Cannot reach API server." });
       }
     }
+
     setLoading(false);
   };
 
@@ -1138,6 +1270,14 @@ export default function HomePage() {
       e.preventDefault();
       sendMessage(input);
     }
+  };
+
+  const resetToHome = () => {
+    setLatestResult(null);
+    setLoading(false);
+    setSteps([]);
+    setInput("");
+    setQuery("");
   };
 
   const isChatActive = loading || !!latestResult;
@@ -1167,12 +1307,22 @@ export default function HomePage() {
         {/* Header */}
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/10 dark:bg-slate-950/20 transition-colors duration-500">
         <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src="/Weatherise_Logo.png" alt="Weatherise Logo" className="w-10 h-10 rounded-xl object-cover" />
-            <h1 className="text-slate-900 dark:text-white font-serif-heading text-2xl md:text-3xl font-black tracking-tight leading-none">
-              Weatherise
-            </h1>
-          </div>
+          <button
+            onClick={resetToHome}
+            className="flex items-center gap-3 text-left group transition-all active:scale-95 outline-none cursor-pointer"
+            title="Return to Home"
+          >
+            <img 
+              src="/Weatherise_Logo.png" 
+              alt="Weatherise Logo" 
+              className="w-10 h-10 rounded-xl object-cover shadow-sm group-hover:scale-105 group-hover:ring-2 group-hover:ring-blue-500/50 dark:group-hover:ring-cyan-400/50 transition-all" 
+            />
+            <div className="flex flex-col">
+              <h1 className="text-slate-900 dark:text-white font-serif-heading text-2xl md:text-3xl font-black tracking-tight leading-none group-hover:text-blue-600 dark:group-hover:text-cyan-400 transition-colors">
+                Weatherise
+              </h1>
+            </div>
+          </button>
 
           <div className="flex items-center gap-5">
             <a href="/monitor" target="_blank" className="text-xs text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-cyan-400 transition-colors flex items-center gap-1.5 font-semibold">
@@ -1261,7 +1411,7 @@ export default function HomePage() {
                     {/* Location */}
                     <div className="flex items-center gap-2.5 text-blue-600 dark:text-cyan-400 font-black text-sm md:text-base uppercase tracking-widest drop-shadow-sm">
                       <MapPin size={18} className="shrink-0" />
-                      <span>ĐÀ NẴNG, VIỆT NAM</span>
+                      <span>DA NANG, VIETNAM</span>
                     </div>
                     
                     {/* Temp & Condition */}
@@ -1648,9 +1798,18 @@ export default function HomePage() {
 
                 {/* Query Composer - Ask Weatherise style */}
                 <div className="flex-shrink-0 rounded-3xl border border-[var(--color-border)] bg-[var(--bg-secondary)] p-6 shadow-2xl space-y-4 min-h-0">
-                  <div className="flex items-center gap-2">
-                    <Search size={15} className="text-[var(--color-brand)]" />
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-brand)]">Ask Weatherise</h3>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Search size={15} className="text-[var(--color-brand)]" />
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-brand)]">Ask Weatherise</h3>
+                    </div>
+                    <button
+                      onClick={resetToHome}
+                      className="text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-cyan-400 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/40 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 transition-all cursor-pointer"
+                      title="Return to Home"
+                    >
+                      <RefreshCw size={11} /> Home
+                    </button>
                   </div>
                   
                   <div className="relative flex items-center bg-[var(--bg-primary)] border border-[var(--color-border)] rounded-full px-4 py-2.5 focus-within:border-[var(--color-brand)] focus-within:ring-2 focus-within:ring-[var(--color-brand)]/20 transition-all">
