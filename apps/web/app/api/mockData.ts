@@ -762,7 +762,9 @@ export function getConstructionMockResponse(query: string): ChatResult {
     map: {
       center: { name: "Da Nang Construction Zone", latitude: 16.0748, longitude: 108.1499 },
       markers: [
-        { id: "site-1", label: "Project Site", latitude: 16.0748, longitude: 108.1499, title: "Da Nang Main Structural Zone", description: "Warning: 14.8 m/s wind gusts expected this afternoon", temperature_c: 35.5, weather_condition: "Convective Storms" }
+        { id: "site-1", label: "🏗️ Tower Crane Zone", latitude: 16.0748, longitude: 108.1499, title: "Da Nang Main Structural Zone", description: "Warning: 14.8 m/s wind gusts expected 13:00-17:00 (QCVN 18:2021/BXD)", temperature_c: 35.5, weather_condition: "Convective Storms" },
+        { id: "site-2", label: "🚢 Marine Berth", latitude: 16.1285, longitude: 108.1412, title: "Lien Chieu Port Deepwater Pier", description: "Scaffolding tie-back reinforcement against 38 km/h coastal gusts", temperature_c: 33.0, weather_condition: "High Coastal Gusts" },
+        { id: "site-3", label: "🏭 Concrete Plant", latitude: 16.0820, longitude: 108.1050, title: "Hi-Tech Park Concrete Plant", description: "Early morning batching shift 05:30 - 09:30 recommended", temperature_c: 27.0, weather_condition: "Optimal Pouring" }
       ]
     },
     insights: [
@@ -955,7 +957,9 @@ export function getAgricultureMockResponse(query: string): ChatResult {
     map: {
       center: { name: "Hoa Vang Agricultural Zone", latitude: 15.9866, longitude: 108.1511 },
       markers: [
-        { id: "agri-1", label: "Hoa Vang Crops", latitude: 15.9866, longitude: 108.1511, title: "Hoa Vang Agricultural Cultivation Zone", description: "Forecasted 46mm/48h rainfall - Irrigation paused", temperature_c: 29.5, weather_condition: "Moisture Recharge" }
+        { id: "agri-1", label: "🌾 Rice Co-op Block A", latitude: 15.9866, longitude: 108.1511, title: "Hoa Vang Main Paddy Block A", description: "Forecasted 46mm rainfall - Artificial irrigation suspended", temperature_c: 29.5, weather_condition: "Moisture Recharge" },
+        { id: "agri-2", label: "💧 Drainage Canal", latitude: 15.9622, longitude: 108.1750, title: "Hoa Tien Primary Drainage Canal", description: "Sluice gates opened for gravity drainage of low plots", temperature_c: 28.5, weather_condition: "Active Drainage" },
+        { id: "agri-3", label: "🔬 Spore Station", latitude: 15.9955, longitude: 108.1288, title: "Tuy Loan Bio-Protection Post", description: "RH 88% triggers Pyricularia oryzae fungal warning alert", temperature_c: 29.0, weather_condition: "Fungal Watch" }
       ]
     },
     insights: [
@@ -1132,8 +1136,9 @@ export function getSevereWeatherMockResponse(query: string): ChatResult {
     map: {
       center: { name: "Da Nang - Son Tra Coastal Waters", latitude: 16.0544, longitude: 108.2022 },
       markers: [
-        { id: "alert-1", label: "Tien Sa Port", latitude: 16.1286, longitude: 108.2215, title: "Tien Sa Seaport", description: "Force 4-5 winds, 1.2m waves - Normal operations", temperature_c: 30.0, weather_condition: "Sea Breeze" },
-        { id: "alert-2", label: "Son Tra Marine Station", latitude: 16.1018, longitude: 108.2764, title: "Oceanographic Station", description: "Barometric reading: 1008 hPa stable", temperature_c: 29.0, weather_condition: "Calm Seas" }
+        { id: "alert-1", label: "📡 Radar 48855", latitude: 16.1200, longitude: 108.2800, title: "Son Tra WMO Doppler Radar", description: "Himawari-9 satellite & radar surveillance active 24/7", temperature_c: 29.0, weather_condition: "Monitoring Axis" },
+        { id: "alert-2", label: "⚓ Maritime Berth", latitude: 16.1286, longitude: 108.2215, title: "Tien Sa Seaport & Fleet Berth", description: "Force 4-5 winds, 1.2m waves - Maritime advisory broadcast", temperature_c: 30.0, weather_condition: "Sea Breeze" },
+        { id: "alert-3", label: "🏖️ My Khe Sentry", latitude: 16.0580, longitude: 108.2480, title: "My Khe Coastal Lifeguard Post", description: "Wave height 1.2 - 1.6m, nearshore swimming safe with flags", temperature_c: 31.0, weather_condition: "Normal Coastal" }
       ]
     },
     insights: [

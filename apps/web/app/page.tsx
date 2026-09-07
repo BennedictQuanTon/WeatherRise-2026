@@ -2195,12 +2195,21 @@ export default function HomePage() {
 
                 </div>
 
-                {/* Small Map — expands to fill remaining space */}
+                {/* Geospatial Map — expands to fill remaining space */}
                 <div className="flex-1 rounded-3xl border border-[var(--color-border)] bg-[var(--bg-secondary)] shadow-2xl overflow-hidden flex flex-col min-h-0">
-                  <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-slate-900/40 flex-shrink-0">
+                  <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-slate-900/60 flex-shrink-0">
                     <div className="flex items-center gap-2">
-                      <Map size={13} className="text-cyan-400" />
-                      <span className="text-xs font-bold text-slate-200">Map & Places</span>
+                      <Map size={14} className="text-blue-500 dark:text-cyan-400" />
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        {latestResult?.domain === "construction" ? "Structural Safety & Wind Radius Map" :
+                         latestResult?.domain === "agriculture" ? "Irrigation & Crop Monitoring Map" :
+                         latestResult?.domain === "severe_weather" ? "Coastal Doppler Radar & Marine Grid" :
+                         "Interactive Trip Itinerary & POI Map"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-semibold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>Da Nang GIS</span>
                     </div>
                   </div>
                   <div className="flex-1 min-h-0 w-full relative">
@@ -2214,7 +2223,11 @@ export default function HomePage() {
                         : latestResult?.coordinates}
                       locationName={latestResult?.trip_view?.title ?? latestResult?.location}
                       weatherMarker={latestResult?.weather_view?.map?.markers?.[0] ?? null}
+                      weatherMarkers={latestResult?.weather_view?.map?.markers ?? []}
+                      domain={latestResult?.domain}
                       activeDay={activeDay}
+                      onActiveDayChange={setActiveDay}
+                      theme={theme}
                     />
                   </div>
                 </div>
