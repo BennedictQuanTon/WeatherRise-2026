@@ -88,21 +88,21 @@ const CATEGORY_ICON_MAP: Record<string, string> = {
   beach: "🏖️",
 };
 
-// ── Basemap Tile Providers ─────────────────────────────────────
+// ── Basemap Tile Providers (100% Free, High-Res, No API Key Required, No Watermark) ──
 const BASEMAP_TILES = {
   voyager: {
     name: "Standard",
-    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-    attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://openstreetmap.org">OSM</a>'
-  },
-  dark: {
-    name: "Dark",
-    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    attribution: '&copy; <a href="https://carto.com/">CARTO</a>'
+    url: "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
+    attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
   },
   satellite: {
     name: "Satellite",
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution: '&copy; <a href="https://esri.com/">Esri</a>'
+  },
+  dark: {
+    name: "Dark",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
     attribution: '&copy; <a href="https://esri.com/">Esri</a>'
   }
 };
@@ -181,13 +181,23 @@ export default function TripMapPanel({
   domain,
   activeDay = 1,
   onActiveDayChange,
-  theme = "dark",
+  theme = "light",
 }: Props) {
   // Basemap style state
-  const [mapStyle, setMapStyle] = useState<"voyager" | "dark" | "satellite">("voyager");
+  const [mapStyle, setMapStyle] = useState<"voyager" | "dark" | "satellite">(
+    theme === "dark" ? "dark" : "voyager"
+  );
   const [showRadar, setShowRadar] = useState<boolean>(true);
   const [selectedDayTab, setSelectedDayTab] = useState<number | "all">(activeDay);
   const [recenterTrigger, setRecenterTrigger] = useState<number>(0);
+
+  useEffect(() => {
+    if (theme === "dark") {
+      setMapStyle("dark");
+    } else {
+      setMapStyle("voyager");
+    }
+  }, [theme]);
 
   useEffect(() => {
     setSelectedDayTab(activeDay);

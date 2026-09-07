@@ -1459,7 +1459,7 @@ export default function HomePage() {
   const [steps, setSteps] = useState<string[]>([]);
   const [latestResult, setLatestResult] = useState<ChatResult | null>(null);
   const [activeDay, setActiveDay] = useState(1);
-  const [theme, setTheme] = useState<"light" | "dark">("dark");
+  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [showMap, setShowMap] = useState(false);
   const [showWeather, setShowWeather] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -1523,7 +1523,8 @@ export default function HomePage() {
       setTheme(saved);
       document.documentElement.className = saved;
     } else {
-      document.documentElement.className = "dark";
+      setTheme("light");
+      document.documentElement.className = "light";
     }
   }, []);
 
